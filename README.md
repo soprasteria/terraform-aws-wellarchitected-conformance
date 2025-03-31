@@ -1,4 +1,4 @@
-# wa-config-conformance
+# terraform-aws-wellarchitected-conformance
 
 # About
 Are you Well-Architected?
