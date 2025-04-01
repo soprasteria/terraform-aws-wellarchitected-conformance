@@ -12,11 +12,16 @@ The main outcome of this module is to accelerate the Well-Architected Framework 
  - [AWS Security Hub](https://aws.amazon.com/security-hub/) with [AWS Foundational Security Best Practices](https://docs.aws.amazon.com/securityhub/latest/userguide/fsbp-standard.html) and/or [CIS AWS Foundations Benchmark](https://docs.aws.amazon.com/securityhub/latest/userguide/cis-aws-foundations-benchmark.html) is not available.
  - 3rd party tools such as [Prowler](https://prowler.com/) and [Steampipe](https://steampipe.io/) are not available or approved by your company.
 
- This Terraform module leverages AWS native services based on AWS Config in addition to custom Lambda checks.
+ This Terraform module provisions AWS native services based on AWS Config, incl. a dedicated AWS Config Recorder, in addition to custom Lambda checks, in a standalone AWS Account.
+
+## Usage
+At least two days before your planned review, deploy the module as suggested in [examples/main.tf](examples/main.tf).
+Compliance checks will update on a daily basis, to reduce unncessary costs for AWS Config Evaluations.
+
 
 ## Functionality
 
-If you navigate to AWS Config - Conformance packs you will be presented with a dashboard with a pack for the Security, Reliability and Cost Optimization Pillars.
+If you navigate to AWS Config - Conformance packs you will be presented with a dashboard with packs for the Security, Reliability and Cost Optimization Pillars.
 
 ![AWS Config Conformance Pack Dashboard](./gfx/screenshot-01.png)
 
@@ -27,10 +32,6 @@ You can view the compliance score trend for each pillar/pack:
 You can also view the compliance status for each check, prefixed with the related best practice question, mapped to the [AWS Well-Architected Framework whitepaper](https://docs.aws.amazon.com/wellarchitected/latest/framework/the-pillars-of-the-framework.html).
 
 ![Conformance Pack Rules](./gfx/screenshot-03.png)
-
-
-## Usage
-1. See [examples/main.tf](examples/main.tf).
 
 
 <!-- BEGIN_TF_DOCS -->
@@ -128,7 +129,7 @@ You can also view the compliance status for each check, prefixed with the relate
 
 
 ## Authors/contributors
-Developed and maintained by Well-Architected enthusiast in Sopra Steria, with no official company support. See [contributors.](https://github.com/soprasteria/terraform-aws-wellarchitected-conformance/graphs/contributors)
+Developed and maintained by Well-Architected enthusiasts in Sopra Steria, with no official company support. See [contributors.](https://github.com/soprasteria/terraform-aws-wellarchitected-conformance/graphs/contributors)
 
 
 ## License
