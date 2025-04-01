@@ -1,7 +1,7 @@
 variable "recording_frequency" {
   type        = string
   default     = "DAILY"
-  description = "AWS Config Recording Frequency."
+  description = "AWS Config Recording Frequency. Valid options: DAILY or CONTINUOUS."
 
   validation {
     condition     = contains(["DAILY", "CONTINUOUS"], var.recording_frequency)
@@ -29,8 +29,8 @@ variable "config_custom_lambda_cloudwatch_logs_retention_in_days" {
 
 variable "scheduled_config_custom_lambda_periodic_trigger_interval" {
   type        = string
-  default     = "One_Hour"
-  description = "AWS Config Custom Lambda Periodic Trigger Interval."
+  default     = "Twelve_Hours"
+  description = "AWS Config Custom Lambda Periodic Trigger Interval. Default value of Twelve_Hours ensures updates within the DAILY window."
   validation {
     condition     = contains(["One_Hour", "Three_Hours", "Six_Hours", "Twelve_Hours", "TwentyFour_Hours"], var.scheduled_config_custom_lambda_periodic_trigger_interval)
     error_message = "The recording_frequency must one of \"One_Hour\", \"Three_Hours\", \"Six_Hours\", \"Twelve_Hours\", \"TwentyFour_Hours\""

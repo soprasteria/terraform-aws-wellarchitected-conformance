@@ -4,7 +4,24 @@
 Are you Well-Architected?
 
 The purpose of this Terraform module is to help you try to answer that question in the form of AWS Config Conformance Packs.
-For each pillar in the Well-Architected Framework, each best practice that is specific enough to be detected will report to be COMPLIANT or NON_COMPLIANT. Some best practices are harder to measure, like how a team evaluates culture and priorities, or how cloud financial management.
+For each pillar in the Well-Architected Framework, each best practice that is specific enough to be detected will report to be COMPLIANT or NON_COMPLIANT. Some best practices are harder to measure, like how a team evaluates culture and priorities and how to practice cloud financial management.
+The best practices in Operational Excellence are not straight forward to detect, as implementation of observability may have subjective opinion on room for improvement or may be performed with 3rd party tools.
+
+The main outcome of this module is to accelerate the Well-Architected Framework Review conversation, not to replace it with automation.
+
+# Functionality
+
+If you navigate to AWS Config - Conformance packs you will be presented with a dashboard like this.
+
+![AWS Config Conformance Pack Dashboard](./gfx/conformance-pack-dashboard.png)
+
+Each conformance pack represents a Well-Architected Framework pillar:
+
+![Well-Architected Framework Pillars](./gfx/well-architected-pillars.png)
+
+Within each conformance pack, you can see the compliance status of individual rules and the conformance status over time:
+
+![Conformance Pack Rules](./gfx/conformance-pack-rules.png)
 
 
 # Providers
@@ -90,8 +107,8 @@ Requires the standard AWS provider.
 | <a name="input_deploy_operational_excellence_conformance_pack"></a> [deploy\_operational\_excellence\_conformance\_pack](#input\_deploy\_operational\_excellence\_conformance\_pack) | Deploy AWS Config Conformance Pack for Operational Excellence. | `bool` | `true` | no |
 | <a name="input_deploy_reliability_conformance_pack"></a> [deploy\_reliability\_conformance\_pack](#input\_deploy\_reliability\_conformance\_pack) | Deploy AWS Config Conformance Pack for Reliability. | `bool` | `true` | no |
 | <a name="input_deploy_security_conformance_pack"></a> [deploy\_security\_conformance\_pack](#input\_deploy\_security\_conformance\_pack) | Deploy AWS Config Conformance Pack for Security. | `bool` | `true` | no |
-| <a name="input_recording_frequency"></a> [recording\_frequency](#input\_recording\_frequency) | AWS Config Recording Frequency. | `string` | `"DAILY"` | no |
-| <a name="input_scheduled_config_custom_lambda_periodic_trigger_interval"></a> [scheduled\_config\_custom\_lambda\_periodic\_trigger\_interval](#input\_scheduled\_config\_custom\_lambda\_periodic\_trigger\_interval) | AWS Config Custom Lambda Periodic Trigger Interval. | `string` | `"One_Hour"` | no |
+| <a name="input_recording_frequency"></a> [recording\_frequency](#input\_recording\_frequency) | AWS Config Recording Frequency. Valid options: DAILY or CONTINUOUS. | `string` | `"DAILY"` | no |
+| <a name="input_scheduled_config_custom_lambda_periodic_trigger_interval"></a> [scheduled\_config\_custom\_lambda\_periodic\_trigger\_interval](#input\_scheduled\_config\_custom\_lambda\_periodic\_trigger\_interval) | AWS Config Custom Lambda Periodic Trigger Interval. Default value of Twelve\_Hours ensures updates within the DAILY window. | `string` | `"Twelve_Hours"` | no |
 
 ## Outputs
 
