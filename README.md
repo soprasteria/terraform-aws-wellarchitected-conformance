@@ -13,15 +13,15 @@ The main outcome of this module is to accelerate the Well-Architected Framework 
 
 If you navigate to AWS Config - Conformance packs you will be presented with a dashboard like this.
 
-![AWS Config Conformance Pack Dashboard](./gfx/conformance-pack-dashboard.png)
+![AWS Config Conformance Pack Dashboard](./gfx/screenshot-01.png)
 
 Each conformance pack represents a Well-Architected Framework pillar:
 
-![Well-Architected Framework Pillars](./gfx/well-architected-pillars.png)
+![Well-Architected Framework Pillars](./gfx/screenshot-02.png)
 
 Within each conformance pack, you can see the compliance status of individual rules and the conformance status over time:
 
-![Conformance Pack Rules](./gfx/conformance-pack-rules.png)
+![Conformance Pack Rules](./gfx/screenshot-03.png)
 
 
 # Providers
