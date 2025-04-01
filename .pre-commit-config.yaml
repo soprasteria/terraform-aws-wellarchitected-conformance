@@ -1,0 +1,21 @@
+fail_fast: true
+repos:
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.98.0
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_docs
+        args: ["--args=--sort-by required"]
+      - id: terraform_checkov
+        args:
+          - --args=--quiet
+          - --args=--download-external-modules false
+  #          - --args=--skip-check CKV_AWS_111,CKV_AWS_110,CKV_AWS_109,CKV_AWS_108
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
