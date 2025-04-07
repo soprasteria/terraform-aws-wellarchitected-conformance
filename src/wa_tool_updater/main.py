@@ -65,7 +65,8 @@ def get_question_mapping(workload_id, pillar):
         # Get all questions for this pillar - pagination not supported for list_answers
         response = wellarchitected_client.list_answers(
             WorkloadId=workload_id,
-            LensAlias=lens_alias
+            LensAlias=lens_alias,
+            PillarId=pillar,
         )
 
         # Get the answers from the response
@@ -78,7 +79,7 @@ def get_question_mapping(workload_id, pillar):
             if question_id:
                 # Store the question ID itself as the key for direct matching with rule names
                 question_ids[question_id] = question_id
-                logger.debug(f"Added question ID {question_id} for pillar {pillar}")
+                logger.info(f"Added question ID {question_id} for pillar {pillar}")
 
         logger.info(f"Generated {len(question_ids)} question IDs for pillar {pillar}")
         return question_ids
@@ -151,7 +152,7 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
     # Extract pillar from conformance pack name
     pillar = None
     for prefix, pillar_name in PILLAR_MAPPING.items():
-        if prefix.lower() in conformance_pack_name.lower():
+        if prefix in conformance_pack_name:
             pillar = pillar_name
             break
 
