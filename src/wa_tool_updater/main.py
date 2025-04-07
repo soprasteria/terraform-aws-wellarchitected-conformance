@@ -67,7 +67,8 @@ def get_question_mapping(workload_id, pillar):
     Returns:
         A dictionary mapping rule prefixes (e.g., SEC01) to question IDs
     """
-    lens_alias = f"wellarchitected:{pillar}"
+    #lens_alias = f"wellarchitected:{pillar}"
+    lens_alias = "wellarchitected"
     question_mapping = {}
 
     try:
@@ -180,6 +181,7 @@ def extract_rule_prefix(rule_name):
 def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
     """Process a conformance pack and update the Well-Architected Tool."""
     logger.info(f"Processing conformance pack: {conformance_pack_name}")
+    lens_alias = "wellarchitected"
 
     # Extract pillar from conformance pack name
     pillar = None
@@ -227,20 +229,22 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
         evaluation_results = get_rule_details(rule_name)
 
         # Prepare notes
-        notes = f"Rule: {rule_name}\nCompliance Status: {compliance_type}\n\nResources:\n"
+        notes = [f"Rule: {rule_name}\nCompliance Status: {compliance_type}\n\nResources:\n"]
 
         if not evaluation_results:
-            notes += "No resources evaluated.\n"
+            notes.append("No resources evaluated.\n")
         else:
             for result in evaluation_results:
                 resource_type = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceType')
                 resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
                 resource_compliance = result.get('ComplianceType')
 
-                notes += f"- Type: {resource_type}, ID: {resource_id}, Status: {resource_compliance}\n"
+                notes.append(f"- Type: {resource_type}, ID: {resource_id}, Status: {resource_compliance}\n")
+
+        notes = ''.join(notes)
 
         # Update Well-Architected Tool
-        update_wellarchitected_notes(workload_id, f"wellarchitected:{pillar}", question_id, notes, dry_run)
+        update_wellarchitected_notes(workload_id, lens_alias, question_id, notes, dry_run)
 
 def lambda_handler(event, context):
     """Lambda handler function."""
