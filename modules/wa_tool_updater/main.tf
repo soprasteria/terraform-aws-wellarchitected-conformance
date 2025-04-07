@@ -12,7 +12,10 @@ module "lambda_function_wa_tool_updater" {
   cloudwatch_logs_retention_in_days = var.cloudwatch_logs_retention_in_days
 
   environment_variables = {
-    LOG_LEVEL = "INFO"
+    LOG_LEVEL                          = "INFO"
+    SECURITY_CONFORMANCE_PACK          = var.security_conformance_pack_name
+    RELIABILITY_CONFORMANCE_PACK       = var.reliability_conformance_pack_name
+    COST_OPTIMIZATION_CONFORMANCE_PACK = var.cost_optimization_conformance_pack_name
   }
 
   policy_statements = {

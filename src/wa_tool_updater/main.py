@@ -17,6 +17,9 @@ compliance information.
 
 Environment Variables:
     LOG_LEVEL: Logging level (default: INFO)
+    SECURITY_CONFORMANCE_PACK: Name of the Security conformance pack
+    RELIABILITY_CONFORMANCE_PACK: Name of the Reliability conformance pack
+    COST_OPTIMIZATION_CONFORMANCE_PACK: Name of the Cost Optimization conformance pack
 
 Event Parameters:
     workload_id: ID of the Well-Architected Tool workload to update
@@ -32,11 +35,16 @@ logger.setLevel(getattr(logging, log_level))
 config_client = boto3.client('config')
 wellarchitected_client = boto3.client('wellarchitected')
 
-# Mapping of conformance pack prefixes to Well-Architected pillars
+# Get conformance pack names from environment variables
+SECURITY_CONFORMANCE_PACK = os.environ.get('SECURITY_CONFORMANCE_PACK', 'Well-Architected-Security')
+RELIABILITY_CONFORMANCE_PACK = os.environ.get('RELIABILITY_CONFORMANCE_PACK', 'Well-Architected-Reliability')
+COST_OPTIMIZATION_CONFORMANCE_PACK = os.environ.get('COST_OPTIMIZATION_CONFORMANCE_PACK', 'Well-Architected-Cost-Optimization')
+
+# Mapping of conformance pack names to Well-Architected pillars
 PILLAR_MAPPING = {
-    'Well-Architected-Security': 'security',
-    'Well-Architected-Reliability': 'reliability',
-    'Well-Architected-Cost-Optimization': 'costOptimization'
+    SECURITY_CONFORMANCE_PACK: 'security',
+    RELIABILITY_CONFORMANCE_PACK: 'reliability',
+    COST_OPTIMIZATION_CONFORMANCE_PACK: 'costOptimization'
 }
 
 # Rule prefix patterns for each pillar
@@ -251,12 +259,14 @@ def lambda_handler(event, context):
             'body': json.dumps('workload_id parameter is required')
         }
 
-    # List of conformance packs to process
+    # List of conformance packs to process from environment variables
     conformance_packs = [
-        'well_architected_conformance_pack_security',
-        'well_architected_conformance_pack_reliability',
-        'well_architected_conformance_pack_cost_optimization'
+        SECURITY_CONFORMANCE_PACK,
+        RELIABILITY_CONFORMANCE_PACK,
+        COST_OPTIMIZATION_CONFORMANCE_PACK
     ]
+
+    logger.info(f"Processing conformance packs: {conformance_packs}")
 
     for pack in conformance_packs:
         process_conformance_pack(pack, workload_id, dry_run)

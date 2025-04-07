@@ -232,6 +232,11 @@ module "wa_tool_updater" {
   workload_id = var.wa_tool_workload_id
   dry_run     = var.wa_tool_updater_dry_run
 
+  # Conformance pack names
+  security_conformance_pack_name          = var.deploy_security_conformance_pack ? aws_config_conformance_pack.well_architected_conformance_pack_security[0].name : "Well-Architected-Security"
+  reliability_conformance_pack_name       = var.deploy_reliability_conformance_pack ? aws_config_conformance_pack.well_architected_conformance_pack_reliability[0].name : "Well-Architected-Reliability"
+  cost_optimization_conformance_pack_name = var.deploy_cost_optimization_conformance_pack ? aws_config_conformance_pack.well_architected_conformance_pack_cost_optimization[0].name : "Well-Architected-Cost-Optimization"
+
   # Tags
   tags = {
     Name        = "well-architected-tool-updater"

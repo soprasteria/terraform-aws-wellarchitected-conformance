@@ -23,7 +23,7 @@ This module can also automatically update your Well-Architected Tool workload wi
 
 The Lambda function will:
 1. Process each conformance pack (Security, Reliability, Cost Optimization)
-2. Loop through all rules in sequence (SEC01, SEC02, REL01, COO01, etc.)
+2. Loop through all rules in sequence (SEC01, SEC02, REL01, REL02, COST01, etc.)
 3. For each rule, list the resource type, resource ID, and compliance status in the Notes field of the corresponding best practice question in your Well-Architected Tool workload
 4. Append new data to preserve the history of compliance changes
 

@@ -46,6 +46,24 @@ variable "dry_run" {
   default     = true
 }
 
+variable "security_conformance_pack_name" {
+  description = "Name of the Security conformance pack"
+  type        = string
+  default     = "Well-Architected-Security"
+}
+
+variable "reliability_conformance_pack_name" {
+  description = "Name of the Reliability conformance pack"
+  type        = string
+  default     = "Well-Architected-Reliability"
+}
+
+variable "cost_optimization_conformance_pack_name" {
+  description = "Name of the Cost Optimization conformance pack"
+  type        = string
+  default     = "Well-Architected-Cost-Optimization"
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)
