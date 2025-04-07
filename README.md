@@ -18,6 +18,19 @@ The main outcome of this module is to accelerate the Well-Architected Framework 
 At least two days before your planned review, deploy the module as suggested in [examples/main.tf](examples/main.tf).
 Compliance checks will update on a daily basis, to reduce unncessary costs for AWS Config Evaluations.
 
+### Well-Architected Tool Integration
+This module can also automatically update your Well-Architected Tool workload with compliance data from the AWS Config Conformance Packs. To enable this feature, set `deploy_wa_tool_updater = true` and provide your workload ID with `wa_tool_workload_id = "your-workload-id"`.
+
+The Lambda function will:
+1. Process each conformance pack (Security, Reliability, Cost Optimization)
+2. Loop through all rules in sequence (SEC01, SEC02, REL01, COO01, etc.)
+3. For each rule, list the resource type, resource ID, and compliance status in the Notes field of the corresponding best practice question in your Well-Architected Tool workload
+4. Append new data to preserve the history of compliance changes
+
+See [examples/complete/main.tf](examples/complete/main.tf) for a complete example with Well-Architected Tool integration.
+
+The source code for the Lambda function is located in the [src/wa_tool_updater](src/wa_tool_updater) directory.
+
 
 ## Functionality
 
@@ -61,6 +74,7 @@ You can also view the compliance status for each check, prefixed with the relate
 | <a name="module_lambda_function_wa_conformance_cost_03_aws_budgets"></a> [lambda\_function\_wa\_conformance\_cost\_03\_aws\_budgets](#module\_lambda\_function\_wa\_conformance\_cost\_03\_aws\_budgets) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
 | <a name="module_lambda_function_wa_conformance_cost_03_aws_cost_anomaly_detection"></a> [lambda\_function\_wa\_conformance\_cost\_03\_aws\_cost\_anomaly\_detection](#module\_lambda\_function\_wa\_conformance\_cost\_03\_aws\_cost\_anomaly\_detection) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
 | <a name="module_lambda_function_wa_conformance_cost_04_ec2_instances_without_auto_scaling"></a> [lambda\_function\_wa\_conformance\_cost\_04\_ec2\_instances\_without\_auto\_scaling](#module\_lambda\_function\_wa\_conformance\_cost\_04\_ec2\_instances\_without\_auto\_scaling) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
+| <a name="module_wa_tool_updater"></a> [wa\_tool\_updater](#module\_wa\_tool\_updater) | ./modules/wa_tool_updater | n/a |
 
 ## Resources
 
@@ -111,13 +125,18 @@ You can also view the compliance status for each check, prefixed with the relate
 | <a name="input_deploy_operational_excellence_conformance_pack"></a> [deploy\_operational\_excellence\_conformance\_pack](#input\_deploy\_operational\_excellence\_conformance\_pack) | Deploy AWS Config Conformance Pack for Operational Excellence. | `bool` | `true` | no |
 | <a name="input_deploy_reliability_conformance_pack"></a> [deploy\_reliability\_conformance\_pack](#input\_deploy\_reliability\_conformance\_pack) | Deploy AWS Config Conformance Pack for Reliability. | `bool` | `true` | no |
 | <a name="input_deploy_security_conformance_pack"></a> [deploy\_security\_conformance\_pack](#input\_deploy\_security\_conformance\_pack) | Deploy AWS Config Conformance Pack for Security. | `bool` | `true` | no |
+| <a name="input_deploy_wa_tool_updater"></a> [deploy\_wa\_tool\_updater](#input\_deploy\_wa\_tool\_updater) | Deploy Lambda function to update Well-Architected Tool with conformance data. | `bool` | `false` | no |
 | <a name="input_recording_frequency"></a> [recording\_frequency](#input\_recording\_frequency) | AWS Config Recording Frequency. Valid options: DAILY or CONTINUOUS. | `string` | `"DAILY"` | no |
 | <a name="input_scheduled_config_custom_lambda_periodic_trigger_interval"></a> [scheduled\_config\_custom\_lambda\_periodic\_trigger\_interval](#input\_scheduled\_config\_custom\_lambda\_periodic\_trigger\_interval) | AWS Config Custom Lambda Periodic Trigger Interval. Default value of Twelve\_Hours ensures updates within the DAILY window. | `string` | `"Twelve_Hours"` | no |
+| <a name="input_wa_tool_updater_dry_run"></a> [wa\_tool\_updater\_dry\_run](#input\_wa\_tool\_updater\_dry\_run) | Whether to run the Well-Architected Tool updater in dry-run mode (no actual updates). | `bool` | `true` | no |
+| <a name="input_wa_tool_workload_id"></a> [wa\_tool\_workload\_id](#input\_wa\_tool\_workload\_id) | ID of the Well-Architected Tool workload to update. | `string` | `""` | no |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
+| <a name="output_wa_tool_updater_lambda_arn"></a> [wa\_tool\_updater\_lambda\_arn](#output\_wa\_tool\_updater\_lambda\_arn) | n/a |
+| <a name="output_wa_tool_updater_lambda_name"></a> [wa\_tool\_updater\_lambda\_name](#output\_wa\_tool\_updater\_lambda\_name) | n/a |
 | <a name="output_well_architected_conformance_pack_cost_optimization_arn"></a> [well\_architected\_conformance\_pack\_cost\_optimization\_arn](#output\_well\_architected\_conformance\_pack\_cost\_optimization\_arn) | n/a |
 | <a name="output_well_architected_conformance_pack_iam_arn"></a> [well\_architected\_conformance\_pack\_iam\_arn](#output\_well\_architected\_conformance\_pack\_iam\_arn) | n/a |
 | <a name="output_well_architected_conformance_pack_reliability_arn"></a> [well\_architected\_conformance\_pack\_reliability\_arn](#output\_well\_architected\_conformance\_pack\_reliability\_arn) | n/a |
@@ -130,6 +149,7 @@ You can also view the compliance status for each check, prefixed with the relate
 
 ## Authors/contributors
 Developed and maintained by Well-Architected enthusiasts in Sopra Steria, with no official company support. See [contributors.](https://github.com/soprasteria/terraform-aws-wellarchitected-conformance/graphs/contributors)
+Accelerated by Amazon Q Developer.
 
 
 ## License

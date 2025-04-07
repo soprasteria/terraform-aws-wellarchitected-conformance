@@ -210,3 +210,31 @@ resource "aws_config_conformance_pack" "well_architected_conformance_pack_cost_o
   #    ]
   #  }
 }
+
+# Deploy the Well-Architected Tool Updater Lambda function if enabled
+module "wa_tool_updater" {
+  count  = var.deploy_wa_tool_updater ? 1 : 0
+  source = "./modules/wa_tool_updater"
+
+  # Lambda configuration
+  lambda_runtime     = var.config_custom_lambda_python_runtime
+  lambda_timeout     = 120 # Longer timeout to handle multiple conformance packs
+  lambda_memory_size = 256
+
+  # CloudWatch Logs configuration
+  cloudwatch_logs_retention_in_days = var.config_custom_lambda_cloudwatch_logs_retention_in_days
+
+  # Scheduled execution configuration
+  enable_scheduled_execution = true
+  schedule_expression        = "rate(1 day)" # Run daily after AWS Config evaluations
+
+  # Well-Architected Tool configuration
+  workload_id = var.wa_tool_workload_id
+  dry_run     = var.wa_tool_updater_dry_run
+
+  # Tags
+  tags = {
+    Name        = "well-architected-tool-updater"
+    Environment = "production"
+  }
+}
