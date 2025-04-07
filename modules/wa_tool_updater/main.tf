@@ -40,6 +40,7 @@ module "lambda_function_wa_tool_updater" {
       effect = "Allow"
       actions = [
         "wellarchitected:GetAnswer",
+        "wellarchitected:ListAnswers",
         "wellarchitected:UpdateAnswer"
       ]
       resources = ["*"]
