@@ -2,7 +2,7 @@ Resources:
   COST01BP05AWSBudgets:
     Type: AWS::Config::ConfigRule
     Properties:
-      ConfigRuleName: COST01-BP05-AWS-Budgets
+      ConfigRuleName: cost01-cloud-financial-management_bp_aws-budgets
       Source:
         Owner: CUSTOM_LAMBDA
         SourceIdentifier: ${lambda_function_wa_conformance_cost_aws_budgets_arn}
@@ -13,7 +13,7 @@ Resources:
   COST02BP03ImplementAnAccountStructure:
     Type: AWS::Config::ConfigRule
     Properties:
-      ConfigRuleName: COST02-BP03-Implement-an-account-structure
+      ConfigRuleName: cost02-govern-usage_bp_implement-an-account-structure
       Source:
         Owner: CUSTOM_LAMBDA
         SourceIdentifier: ${lambda_function_wa_conformance_cost_account_structure_implemented_arn}
@@ -24,7 +24,7 @@ Resources:
   COST03BP02AddOrganizationInformationToCostAndUsageWithTags:
     Type: AWS::Config::ConfigRule
     Properties:
-      ConfigRuleName: COST03-BP02-Add-Organization-information-to-cost-and-usage-with-tags
+      ConfigRuleName: cost03-monitor-usage_bp_organization-information-to-cost-and-usage-with-tags
       Source:
         Owner: CUSTOM_LAMBDA
         SourceIdentifier: ${lambda_function_wa_conformance_cost_add_organization_information_to_cost_and_usage}
@@ -35,7 +35,7 @@ Resources:
   COST03BP05AWSCostAnomalyDetection:
     Type: AWS::Config::ConfigRule
     Properties:
-      ConfigRuleName: COST03-BP05-AWS-Cost-Anomaly-Detection
+      ConfigRuleName: cost03-monitor-usage_bp_aws-cost-anomaly-detection
       Source:
         Owner: CUSTOM_LAMBDA
         SourceIdentifier: ${lambda_function_wa_conformance_cost_aws_cost_anomaly_detection_arn}
@@ -46,7 +46,7 @@ Resources:
   COST03BP05AWSBudgets:
     Type: AWS::Config::ConfigRule
     Properties:
-      ConfigRuleName: COST03-BP05-AWS-Budgets
+      ConfigRuleName: cost03-monitor-usage_bp_aws-budgets
       Source:
         Owner: CUSTOM_LAMBDA
         SourceIdentifier: ${lambda_function_wa_conformance_cost_aws_budgets_arn}
@@ -57,7 +57,7 @@ Resources:
   COST04BP04DecommissionResourcesAutomatically:
     Type: AWS::Config::ConfigRule
     Properties:
-      ConfigRuleName: COST04-BP04-Decommission-Resources-Automatically
+      ConfigRuleName: cost03-decomissioning-resources_bp_decommission-resources-automatically
       Source:
         Owner: CUSTOM_LAMBDA
         SourceIdentifier: ${lambda_function_wa_conformance_ec2_instances_without_auto_scaling}
