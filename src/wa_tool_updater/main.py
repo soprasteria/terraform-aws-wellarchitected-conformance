@@ -2,7 +2,6 @@ import boto3
 import json
 import logging
 import os
-import re
 from datetime import datetime
 from botocore.exceptions import ClientError
 
@@ -47,29 +46,20 @@ PILLAR_MAPPING = {
     COST_OPTIMIZATION_CONFORMANCE_PACK: 'costOptimization'
 }
 
-# Rule prefix patterns for each pillar
-RULE_PREFIX_PATTERNS = {
-    'security': r'^SEC(\d+)',
-    'reliability': r'^REL(\d+)',
-    'costOptimization': r'^COST(\d+)'
-}
-
 def get_question_mapping(workload_id, pillar):
     """
     Dynamically generate question mapping by listing answers for the pillar
-    and mapping them to numerical indices while preserving the original order
-    from the Well-Architected Tool.
+    and creating a dictionary of question IDs for later matching with AWS Config rules.
 
     Args:
         workload_id: The Well-Architected workload ID
         pillar: The pillar name (security, reliability, costOptimization)
 
     Returns:
-        A dictionary mapping rule prefixes (e.g., SEC01) to question IDs
+        A dictionary of question IDs for the specified pillar
     """
-    #lens_alias = f"wellarchitected:{pillar}"
     lens_alias = "wellarchitected"
-    question_mapping = {}
+    question_ids = {}
 
     try:
         # Get all questions for this pillar - pagination not supported for list_answers
@@ -80,31 +70,18 @@ def get_question_mapping(workload_id, pillar):
 
         # Get the answers from the response
         all_questions = response.get('AnswerSummaries', [])
-
-        # The Well-Architected Tool API returns questions in their proper order
-        # We'll use this order directly without sorting to preserve the intended structure
         logger.info(f"Retrieved {len(all_questions)} questions for pillar {pillar}")
 
-        # Create mapping based on the pattern for this pillar
-        prefix_pattern = RULE_PREFIX_PATTERNS.get(pillar)
-        if not prefix_pattern:
-            logger.warning(f"No rule prefix pattern defined for pillar: {pillar}")
-            return {}
-
-        # Get the prefix base (SEC, REL, COST)
-        prefix_base = prefix_pattern[1:4]
-
-        # Map each question to a numbered rule prefix (SEC01, SEC02, etc.)
-        # using the original order from the Well-Architected Tool
-        for i, question in enumerate(all_questions, start=1):
+        # Store all question IDs for this pillar
+        for question in all_questions:
             question_id = question.get('QuestionId')
             if question_id:
-                rule_prefix = f"{prefix_base}{i:02d}"  # Format as SEC01, SEC02, etc.
-                question_mapping[rule_prefix] = question_id
-                logger.debug(f"Mapped {rule_prefix} to question {question_id} (original position {i})")
+                # Store the question ID itself as the key for direct matching with rule names
+                question_ids[question_id] = question_id
+                logger.debug(f"Added question ID {question_id} for pillar {pillar}")
 
-        logger.info(f"Generated {len(question_mapping)} question mappings for pillar {pillar}")
-        return question_mapping
+        logger.info(f"Generated {len(question_ids)} question IDs for pillar {pillar}")
+        return question_ids
 
     except ClientError as e:
         logger.error(f"Error generating question mapping for pillar {pillar}: {e}")
@@ -166,18 +143,6 @@ def update_wellarchitected_notes(workload_id, lens_alias, question_id, notes, dr
         logger.error(f"Error updating Well-Architected Tool: {e}")
         return False
 
-def extract_rule_prefix(rule_name):
-    """Extract the rule prefix (e.g., SEC01) from a rule name."""
-    # Look for patterns like SEC01, REL02, COST03, etc.
-    patterns = [r'(SEC\d+)', r'(REL\d+)', r'(COST\d+)']
-
-    for pattern in patterns:
-        match = re.search(pattern, rule_name)
-        if match:
-            return match.group(1)
-
-    return None
-
 def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
     """Process a conformance pack and update the Well-Architected Tool."""
     logger.info(f"Processing conformance pack: {conformance_pack_name}")
@@ -194,35 +159,44 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
         logger.warning(f"Could not determine pillar for conformance pack: {conformance_pack_name}")
         return
 
-    # Dynamically generate question mapping for this pillar
-    question_mapping = get_question_mapping(workload_id, pillar)
+    # Get all question IDs for this pillar
+    question_ids = get_question_mapping(workload_id, pillar)
 
-    if not question_mapping:
-        logger.warning(f"No question mapping generated for pillar: {pillar}")
+    if not question_ids:
+        logger.warning(f"No question IDs retrieved for pillar: {pillar}")
         return
 
     # Get conformance pack rules
     rules = get_conformance_pack_details(conformance_pack_name)
 
-    # Sort rules by their prefix (SEC01, SEC02, etc.)
-    sorted_rules = sorted(rules, key=lambda x: x.get('ConfigRuleName', ''))
-
-    for rule in sorted_rules:
+    for rule in rules:
         rule_name = rule.get('ConfigRuleName')
         compliance_type = rule.get('Compliance', {}).get('ComplianceType')
 
-        # Extract rule prefix (SEC01, REL02, etc.)
-        rule_prefix = extract_rule_prefix(rule_name)
+        # Find matching question ID for this rule
+        matching_question_id = None
+        for question_id in question_ids:
+            # Check if the question ID appears in the rule name
+            if question_id in rule_name:
+                matching_question_id = question_id
+                logger.info(f"Found matching question ID {matching_question_id} for rule {rule_name}")
+                break
 
-        if not rule_prefix:
-            logger.warning(f"Could not extract rule prefix from rule name: {rule_name}")
-            continue
+        # If no direct match found, try to find any question ID that is a substring of the rule name
+        if not matching_question_id:
+            for question_id in question_ids:
+                # Extract parts of the question ID to check for partial matches
+                parts = question_id.split('.')
+                for part in parts:
+                    if part and len(part) > 3 and part in rule_name:  # Avoid matching very short strings
+                        matching_question_id = question_id
+                        logger.info(f"Found partial match with question ID {matching_question_id} (part: {part}) for rule {rule_name}")
+                        break
+                if matching_question_id:
+                    break
 
-        # Find the question ID based on rule prefix
-        question_id = question_mapping.get(rule_prefix)
-
-        if not question_id:
-            logger.warning(f"No question ID mapping found for rule prefix: {rule_prefix}")
+        if not matching_question_id:
+            logger.warning(f"No matching question ID found for rule: {rule_name}")
             continue
 
         # Get rule details including resources
@@ -244,7 +218,7 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
         notes = ''.join(notes)
 
         # Update Well-Architected Tool
-        update_wellarchitected_notes(workload_id, lens_alias, question_id, notes, dry_run)
+        update_wellarchitected_notes(workload_id, lens_alias, matching_question_id, notes, dry_run)
 
 def lambda_handler(event, context):
     """Lambda handler function."""
