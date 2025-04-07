@@ -71,17 +71,14 @@ def get_question_mapping(workload_id, pillar):
     question_mapping = {}
 
     try:
-        # Get all questions for this pillar
-        paginator = wellarchitected_client.get_paginator('list_answers')
-        page_iterator = paginator.paginate(
+        # Get all questions for this pillar - pagination not supported for list_answers
+        response = wellarchitected_client.list_answers(
             WorkloadId=workload_id,
             LensAlias=lens_alias
         )
 
-        # Collect all questions while preserving their original order
-        all_questions = []
-        for page in page_iterator:
-            all_questions.extend(page.get('AnswerSummaries', []))
+        # Get the answers from the response
+        all_questions = response.get('AnswerSummaries', [])
 
         # The Well-Architected Tool API returns questions in their proper order
         # We'll use this order directly without sorting to preserve the intended structure
