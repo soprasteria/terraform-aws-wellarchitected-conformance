@@ -67,6 +67,7 @@ def get_question_mapping(workload_id, pillar):
             WorkloadId=workload_id,
             LensAlias=lens_alias,
             PillarId=pillar,
+            MaxResults=50
         )
 
         # Get the answers from the response
