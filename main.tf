@@ -239,7 +239,6 @@ module "wa_tool_updater" {
 
   # Tags
   tags = {
-    Name        = "well-architected-tool-updater"
-    Environment = "production"
+    Name = "well-architected-tool-updater"
   }
 }
