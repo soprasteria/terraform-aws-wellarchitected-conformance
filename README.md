@@ -10,6 +10,7 @@ The main outcome of this module is to accelerate the Well-Architected Framework 
 
 ## Use-case
  - [AWS Security Hub](https://aws.amazon.com/security-hub/) with [AWS Foundational Security Best Practices](https://docs.aws.amazon.com/securityhub/latest/userguide/fsbp-standard.html) and/or [CIS AWS Foundations Benchmark](https://docs.aws.amazon.com/securityhub/latest/userguide/cis-aws-foundations-benchmark.html) is not available.
+ - AWS Trusted Advisor checks based on AWS Business or Enterprise Support is not available.
  - 3rd party tools such as [Prowler](https://prowler.com/) and [Steampipe](https://steampipe.io/) are not available or approved by your company.
 
  This Terraform module provisions AWS native services based on AWS Config, incl. a dedicated AWS Config Recorder, in addition to custom Lambda checks, in a standalone AWS Account.

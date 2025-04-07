@@ -162,7 +162,7 @@ resource "aws_lambda_permission" "config_permissions" {
 
 
 resource "aws_config_config_rule" "cost_01_aws_budgets" {
-  name        = "COST01-BP05-AWS-Budgets"
+  name        = "cost01-cloud-financial-management_bp_aws-budgets"
   description = "Checks for AWS Budgets setup according to WAF COST01-BP05 Report and notify on cost optimization."
 
   source {
@@ -179,7 +179,7 @@ resource "aws_config_config_rule" "cost_01_aws_budgets" {
 }
 
 resource "aws_config_config_rule" "cost_02_account_structure_implemented" {
-  name        = "COST02-BP03-Implement-an-account-structure"
+  name        = "cost02-govern-usage_bp_implement-an-account-structure"
   description = "Checks for the AWS account being a member account in AWS Organizations with consolidated billing enabled."
 
   source {
@@ -196,7 +196,7 @@ resource "aws_config_config_rule" "cost_02_account_structure_implemented" {
 }
 
 resource "aws_config_config_rule" "cost_03_organization_information_to_cost_and_usage" {
-  name        = "COST03-BP02-Organization-information-to-cost-and-usage-with-tags"
+  name        = "cost03-monitor-usage_bp_organization-information-to-cost-and-usage-with-tags"
   description = "Checks for AWS Organization Tag Policies enabled and at least one Tag Policy applicable for the AWS account."
 
   source {
@@ -213,7 +213,7 @@ resource "aws_config_config_rule" "cost_03_organization_information_to_cost_and_
 }
 
 resource "aws_config_config_rule" "cost_03_aws_budgets" {
-  name        = "COST03-BP05-AWS-Budgets"
+  name        = "cost03-monitor-usage_bp_aws-budgets"
   description = "Checks for AWS Budgets setup according to WAF COST03-BP05 Configure billing and cost management tools."
 
   source {
@@ -230,7 +230,7 @@ resource "aws_config_config_rule" "cost_03_aws_budgets" {
 }
 
 resource "aws_config_config_rule" "cost_03_aws_cost_anomaly_detection" {
-  name        = "COST03-BP05-AWS-Cost-Anomaly-Detection"
+  name        = "cost03-monitor-usage_bp_aws-cost-anomaly-detection"
   description = "Checks for AWS Cost Anomaly Detection setup according to WAF COST03-BP05 Configure billing and cost management tools."
 
   source {
@@ -247,7 +247,7 @@ resource "aws_config_config_rule" "cost_03_aws_cost_anomaly_detection" {
 }
 
 resource "aws_config_config_rule" "cost_04_decommission_resources_automatically" {
-  name        = "COST04-BP04-Decommission-Resources-Automatically"
+  name        = "cost03-decomissioning-resources_bp_decommission-resources-automatically"
   description = "Checks for EC2 instances not associated with Auto Scaling Groups."
 
   source {
