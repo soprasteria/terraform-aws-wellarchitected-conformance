@@ -107,7 +107,7 @@ def generate_summarized_notes_for_rule(rule_data):
         return None
 
     notes = []
-    notes.append(f"**{rule_name}** ({compliance_type})\n")
+    notes.append(f"**{rule_name}**\n")
 
     # Add non-compliant resources first (by type)
     non_compliant_types = []
@@ -197,14 +197,45 @@ def get_question_mapping(workload_id, pillar):
         return {}
 
 def get_conformance_pack_details(conformance_pack_name):
-    """Get details of a conformance pack including its rules."""
+    """
+    Get details of a conformance pack including its rules.
+    Manually handles pagination for result sets larger than 100.
+    """
     try:
-        response = config_client.describe_conformance_pack_compliance(
-            ConformancePackName=conformance_pack_name
-        )
-        return response.get('ConformancePackRuleComplianceList', [])
+        rules_list = []
+        next_token = None
+
+        while True:
+            # Prepare kwargs for the API call
+            kwargs = {
+                'ConformancePackName': conformance_pack_name,
+                'Limit': 100
+            }
+
+            # Add NextToken if we have one
+            if next_token:
+                kwargs['NextToken'] = next_token
+
+            # Make the API call
+            response = config_client.describe_conformance_pack_compliance(**kwargs)
+
+            # Add the rules from this page
+            rules_list.extend(response.get('ConformancePackRuleComplianceList', []))
+
+            # Get the next token
+            next_token = response.get('NextToken')
+
+            # If no next token, we've reached the end
+            if not next_token:
+                break
+
+        return rules_list
+
     except ClientError as e:
         logger.error(f"Error getting conformance pack details: {e}")
+        return []
+    except Exception as e:
+        logger.error(f"Unexpected error in get_conformance_pack_details: {e}")
         return []
 
 def get_rule_details(rule_name):
@@ -212,7 +243,8 @@ def get_rule_details(rule_name):
     try:
         response = config_client.get_compliance_details_by_config_rule(
             ConfigRuleName=rule_name,
-            ComplianceTypes=['NON_COMPLIANT', 'COMPLIANT']
+            ComplianceTypes=['NON_COMPLIANT', 'COMPLIANT'],
+            Limit=100
         )
         return response.get('EvaluationResults', [])
     except ClientError as e:
@@ -453,7 +485,7 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
                 continue
 
             # Add rule header - more compact format
-            consolidated_notes.append(f"**{rule_name}** ({compliance_type})\n")
+            consolidated_notes.append(f"**{rule_name}**\n")
 
             # Group results by compliance type for better readability
             compliant_resources = []
