@@ -4,14 +4,15 @@ import logging
 import os
 from datetime import datetime
 from botocore.exceptions import ClientError
+from collections import defaultdict
 
 """
 Well-Architected Tool Updater Lambda Function
 
 This Lambda function updates a Well-Architected Tool workload with compliance data
 from AWS Config Conformance Packs. It processes each conformance pack (Security,
-Reliability, Cost Optimization), loops through all rules in sequence, and updates
-the corresponding question in the Well-Architected Tool workload with resource
+Reliability, Cost Optimization), groups all rules by question ID, and updates
+each question in the Well-Architected Tool workload with consolidated resource
 compliance information.
 
 Environment Variables:
@@ -23,6 +24,7 @@ Environment Variables:
 Event Parameters:
     workload_id: ID of the Well-Architected Tool workload to update
     dry_run: Whether to run in dry-run mode (no actual updates)
+    clean_notes: Whether to clean all notes before updating
 """
 
 # Configure logging
@@ -45,6 +47,11 @@ PILLAR_MAPPING = {
     RELIABILITY_CONFORMANCE_PACK: 'reliability',
     COST_OPTIMIZATION_CONFORMANCE_PACK: 'costOptimization'
 }
+
+# Maximum character limit for Well-Architected Tool notes
+MAX_NOTES_LENGTH = 2080
+# Safety margin for notes to ensure we don't exceed the limit
+NOTES_SAFETY_MARGIN = 50
 
 def get_question_mapping(workload_id, pillar):
     """
@@ -80,7 +87,7 @@ def get_question_mapping(workload_id, pillar):
             if question_id:
                 # Store the question ID itself as the key for direct matching with rule names
                 question_ids[question_id] = question_id
-                logger.info(f"Added question ID {question_id} for pillar {pillar}")
+                logger.debug(f"Added question ID {question_id} for pillar {pillar}")
 
         logger.info(f"Generated {len(question_ids)} question IDs for pillar {pillar}")
         return question_ids
@@ -112,10 +119,10 @@ def get_rule_details(rule_name):
         logger.error(f"Error getting rule details: {e}")
         return []
 
-def update_wellarchitected_notes(workload_id, lens_alias, question_id, notes, rule_name, dry_run=True):
-    """Update notes for a specific question in the Well-Architected Tool."""
+def update_wellarchitected_notes(workload_id, lens_alias, question_id, consolidated_notes, dry_run=True):
+    """Update notes for a specific question in the Well-Architected Tool with consolidated information."""
     if dry_run:
-        logger.info(f"DRY RUN: Would update question {question_id} with notes: {notes}")
+        logger.info(f"DRY RUN: Would update question {question_id} with consolidated notes")
         return True
 
     try:
@@ -126,34 +133,57 @@ def update_wellarchitected_notes(workload_id, lens_alias, question_id, notes, ru
             QuestionId=question_id
         )
 
-        # Update the notes, preserving existing content but replacing previous evaluation for this rule
+        # Get current notes
         current_notes = response.get('Answer', {}).get('Notes', '')
+
+        # Get timestamp for the report
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Define start and end markers for this rule's evaluation results
-        start_marker = f"<!-- BEGIN_{rule_name} -->"
-        end_marker = f"<!-- END_{rule_name} -->"
+        # Define markers for our automated updates - include timestamp in the start marker
+        start_marker = f"<!-- BEGIN_AUTOMATED_COMPLIANCE_REPORT_{timestamp} -->"
+        end_marker = "<!-- END_AUTOMATED_COMPLIANCE_REPORT -->"
 
-        # Check if we already have evaluation results for this rule
-        start_idx = current_notes.find(start_marker)
+        # Check if we already have evaluation results - look for the generic part of the marker
+        start_idx = current_notes.find("<!-- BEGIN_AUTOMATED_COMPLIANCE_REPORT_")
         end_idx = current_notes.find(end_marker)
 
+        # Create the new section with the report content
+        new_section = f"{start_marker}\n\n{consolidated_notes}\n{end_marker}"
+
         if start_idx >= 0 and end_idx >= 0 and end_idx > start_idx:
-            # Replace existing evaluation results for this rule
+            # Replace existing evaluation results
             before_section = current_notes[:start_idx]
             after_section = current_notes[end_idx + len(end_marker):]
-            new_section = f"{start_marker}\nLast update: {timestamp}\n{notes}\n{end_marker}"
             updated_notes = f"{before_section}{new_section}{after_section}"
         else:
             # Add new evaluation results
-            new_section = f"\n\n{start_marker}\nLast update: {timestamp}\n{notes}\n{end_marker}"
-            updated_notes = f"{current_notes}{new_section}"
+            separator = "\n\n" if current_notes else ""
+            updated_notes = f"{current_notes}{separator}{new_section}"
 
         # Check if the updated notes exceed the character limit
-        if len(updated_notes) > 2080:
-            logger.error(f"Updated notes for question {question_id} exceed the 2080 character limit: {len(updated_notes)} characters")
+        if len(updated_notes) > MAX_NOTES_LENGTH - NOTES_SAFETY_MARGIN:
+            logger.warning(f"Updated notes for question {question_id} exceed the character limit: {len(updated_notes)} characters")
             # Truncate the notes to fit within the limit
-            updated_notes = updated_notes[:2070] + "..."
+            max_safe_length = MAX_NOTES_LENGTH - NOTES_SAFETY_MARGIN
+            if start_idx >= 0 and end_idx >= 0 and end_idx > start_idx:
+                # If we have existing sections, preserve the structure but truncate the new section
+                before_section = current_notes[:start_idx]
+                after_section = current_notes[end_idx + len(end_marker):]
+
+                # Calculate how much space we have for the new section
+                available_space = max_safe_length - len(before_section) - len(after_section) - len(start_marker) - len(end_marker) - 50  # Extra buffer
+
+                if available_space > 200:  # Ensure we have enough space for meaningful content
+                    truncated_content = consolidated_notes[:available_space - 50]
+                    truncated_content += "\n[Content truncated due to size limits]"
+
+                    updated_notes = f"{before_section}{start_marker}\n{truncated_content}\n{end_marker}{after_section}"
+                else:
+                    # Not enough space, create a minimal report
+                    updated_notes = f"{before_section}{start_marker}\n[Content truncated due to size limits]\n{end_marker}{after_section}"
+            else:
+                # No existing sections, truncate the whole notes
+                updated_notes = updated_notes[:max_safe_length - 40] + "\n[Content truncated due to size limits]"
 
         # Update the answer with new notes
         wellarchitected_client.update_answer(
@@ -170,7 +200,10 @@ def update_wellarchitected_notes(workload_id, lens_alias, question_id, notes, ru
         return False
 
 def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
-    """Process a conformance pack and update the Well-Architected Tool."""
+    """
+    Process a conformance pack, group rules by question ID, and update the Well-Architected Tool
+    with consolidated information for each question.
+    """
     logger.info(f"Processing conformance pack: {conformance_pack_name}")
     lens_alias = "wellarchitected"
 
@@ -195,6 +228,10 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
     # Get conformance pack rules
     rules = get_conformance_pack_details(conformance_pack_name)
 
+    # Dictionary to group rules and their results by question ID
+    question_rule_mapping = defaultdict(list)
+
+    # First pass: match rules to questions and collect them
     for rule in rules:
         rule_name = rule.get('ConfigRuleName')
         compliance_type = rule.get('Compliance', {}).get('ComplianceType')
@@ -228,29 +265,69 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
         # Get rule details including resources
         evaluation_results = get_rule_details(rule_name)
 
-        # Prepare notes
-        notes = [""]
+        # Add this rule and its results to the question's collection
+        question_rule_mapping[matching_question_id].append({
+            'rule_name': rule_name,
+            'compliance_type': compliance_type,
+            'evaluation_results': evaluation_results
+        })
 
-        if not evaluation_results:
-            notes.append("No resources evaluated.\n")
-        else:
-            for result in evaluation_results:
-                resource_type = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceType')
-                resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
-                resource_compliance = result.get('ComplianceType')
+    # Second pass: process each question and update with consolidated information
+    for question_id, rules_data in question_rule_mapping.items():
+        consolidated_notes = []
 
-                notes.append(f"- {resource_compliance}, {resource_type}, {resource_id}\n")
+        for rule_data in rules_data:
+            rule_name = rule_data['rule_name']
+            compliance_type = rule_data['compliance_type']
+            evaluation_results = rule_data['evaluation_results']
 
-        notes_content = ''.join(notes)
+            # Add rule header
+            consolidated_notes.append(f"Rule: {rule_name}\n")
 
-        # Check if notes exceed character limit
-        if len(notes_content) > 2080:
-            logger.error(f"Notes for rule {rule_name} exceed the 2080 character limit: {len(notes_content)} characters")
-            # Truncate the notes to fit within the limit
-            notes_content = notes_content[:2070] + "..."
+            if not evaluation_results:
+                consolidated_notes.append("No resources evaluated.\n\n")
+            else:
+                # Group results by compliance type for better readability
+                compliant_resources = []
+                non_compliant_resources = []
 
-        # Update Well-Architected Tool
-        update_wellarchitected_notes(workload_id, lens_alias, matching_question_id, notes_content, rule_name, dry_run)
+                for result in evaluation_results:
+                    resource_type = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceType')
+                    resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
+                    resource_compliance = result.get('ComplianceType')
+
+                    resource_info = f"{resource_type}: {resource_id}"
+
+                    if resource_compliance == 'COMPLIANT':
+                        compliant_resources.append(resource_info)
+                    elif resource_compliance == 'NON_COMPLIANT':
+                        non_compliant_resources.append(resource_info)
+
+                # Add non-compliant resources first as they're more important
+                if non_compliant_resources:
+                    consolidated_notes.append("Non-compliant resources:\n")
+                    for resource in non_compliant_resources:
+                        consolidated_notes.append(f"- {resource}\n")
+                    consolidated_notes.append("\n")
+
+                # Add compliant resources
+                if compliant_resources:
+                    consolidated_notes.append("Compliant resources:\n")
+                    # If there are many compliant resources, summarize them
+                    if len(compliant_resources) > 10:
+                        consolidated_notes.append(f"- {len(compliant_resources)} compliant resources\n")
+                    else:
+                        for resource in compliant_resources:
+                            consolidated_notes.append(f"- {resource}\n")
+                    consolidated_notes.append("\n")
+
+            #consolidated_notes.append("\n")
+
+        # Join all notes into a single string
+        notes_content = ''.join(consolidated_notes)
+
+        # Update Well-Architected Tool with consolidated notes for this question
+        update_wellarchitected_notes(workload_id, lens_alias, question_id, notes_content, dry_run)
 
 def clean_all_notes(workload_id, dry_run=True):
     """
@@ -290,21 +367,14 @@ def clean_all_notes(workload_id, dry_run=True):
                     if not question_id:
                         continue
 
-                    if dry_run:
-                        logger.info(f"DRY RUN: Would clear notes for question {question_id} in pillar {pillar}")
-                    else:
-                        try:
-                            # Update the answer with empty notes
-                            wellarchitected_client.update_answer(
-                                WorkloadId=workload_id,
-                                LensAlias=lens_alias,
-                                QuestionId=question_id,
-                                Notes=""
-                            )
-                            logger.info(f"Successfully cleared notes for question {question_id} in pillar {pillar}")
-                        except ClientError as e:
-                            logger.error(f"Error clearing notes for question {question_id} in pillar {pillar}: {e}")
-                            success = False
+                    if not wellarchitected_client.update_answer(
+                        WorkloadId=workload_id,
+                        LensAlias=lens_alias,
+                        QuestionId=question_id,
+                        Notes=""
+                    ):
+                        logger.error(f"Failed to clear notes for question {question_id} in pillar {pillar}")
+                        success = False
 
             except ClientError as e:
                 logger.error(f"Error listing answers for pillar {pillar}: {e}")
