@@ -142,11 +142,11 @@ def update_wellarchitected_notes(workload_id, lens_alias, question_id, notes, ru
             # Replace existing evaluation results for this rule
             before_section = current_notes[:start_idx]
             after_section = current_notes[end_idx + len(end_marker):]
-            new_section = f"{start_marker}\n--- AWS Config Compliance Update: {timestamp} ---\n{notes}\n{end_marker}"
+            new_section = f"{start_marker}\nLast update: {timestamp}\n{notes}\n{end_marker}"
             updated_notes = f"{before_section}{new_section}{after_section}"
         else:
             # Add new evaluation results
-            new_section = f"\n\n{start_marker}\n--- AWS Config Compliance Update: {timestamp} ---\n{notes}\n{end_marker}"
+            new_section = f"\n\n{start_marker}\nLast update: {timestamp}\n{notes}\n{end_marker}"
             updated_notes = f"{current_notes}{new_section}"
 
         # Check if the updated notes exceed the character limit
@@ -229,7 +229,7 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
         evaluation_results = get_rule_details(rule_name)
 
         # Prepare notes
-        notes = [f"Rule: {rule_name}\nCompliance Status: {compliance_type}\n\nResources:\n"]
+        notes = [""]
 
         if not evaluation_results:
             notes.append("No resources evaluated.\n")
@@ -239,7 +239,7 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
                 resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
                 resource_compliance = result.get('ComplianceType')
 
-                notes.append(f"- {resource_compliance}:{resource_type}, ID: {resource_id}\n")
+                notes.append(f"- {resource_compliance}, {resource_type}, {resource_id}\n")
 
         notes_content = ''.join(notes)
 
@@ -252,52 +252,6 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
         # Update Well-Architected Tool
         update_wellarchitected_notes(workload_id, lens_alias, matching_question_id, notes_content, rule_name, dry_run)
 
-def lambda_handler(event, context):
-    """Lambda handler function."""
-    logger.info(f"Event received: {json.dumps(event)}")
-
-    # Get parameters from event
-    workload_id = event.get('workload_id')
-    dry_run = event.get('dry_run', True)
-    clean_notes = event.get('clean_notes', False)
-
-    if not workload_id:
-        return {
-            'statusCode': 400,
-            'body': json.dumps('workload_id parameter is required')
-        }
-
-    # If clean_notes is True, clear all notes for the workload
-    if clean_notes:
-        logger.info(f"Clean notes mode enabled. Will clear all notes for workload {workload_id}")
-        if clean_all_notes(workload_id, dry_run):
-            return {
-                'statusCode': 200,
-                'body': json.dumps('Well-Architected Tool notes cleaned successfully')
-            }
-        else:
-            return {
-                'statusCode': 500,
-                'body': json.dumps('Failed to clean Well-Architected Tool notes')
-            }
-
-    # List of conformance packs to process from environment variables
-    conformance_packs = [
-        SECURITY_CONFORMANCE_PACK,
-        RELIABILITY_CONFORMANCE_PACK,
-        COST_OPTIMIZATION_CONFORMANCE_PACK
-    ]
-
-    logger.info(f"Processing conformance packs: {conformance_packs}")
-    logger.info(f"Running in {'dry-run' if dry_run else 'live'} mode")
-
-    for pack in conformance_packs:
-        process_conformance_pack(pack, workload_id, dry_run)
-
-    return {
-        'statusCode': 200,
-        'body': json.dumps('Well-Architected Tool update completed')
-    }
 def clean_all_notes(workload_id, dry_run=True):
     """
     Clean all notes for a workload by setting them to empty strings.
@@ -360,3 +314,50 @@ def clean_all_notes(workload_id, dry_run=True):
     except Exception as e:
         logger.error(f"Unexpected error cleaning notes: {e}")
         return False
+
+def lambda_handler(event, context):
+    """Lambda handler function."""
+    logger.info(f"Event received: {json.dumps(event)}")
+
+    # Get parameters from event
+    workload_id = event.get('workload_id')
+    dry_run = event.get('dry_run', True)
+    clean_notes = event.get('clean_notes', False)
+
+    if not workload_id:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('workload_id parameter is required')
+        }
+
+    # If clean_notes is True, clear all notes for the workload
+    if clean_notes:
+        logger.info(f"Clean notes mode enabled. Will clear all notes for workload {workload_id}")
+        if clean_all_notes(workload_id, dry_run):
+            return {
+                'statusCode': 200,
+                'body': json.dumps('Well-Architected Tool notes cleaned successfully')
+            }
+        else:
+            return {
+                'statusCode': 500,
+                'body': json.dumps('Failed to clean Well-Architected Tool notes')
+            }
+
+    # List of conformance packs to process from environment variables
+    conformance_packs = [
+        SECURITY_CONFORMANCE_PACK,
+        RELIABILITY_CONFORMANCE_PACK,
+        COST_OPTIMIZATION_CONFORMANCE_PACK
+    ]
+
+    logger.info(f"Processing conformance packs: {conformance_packs}")
+    logger.info(f"Running in {'dry-run' if dry_run else 'live'} mode")
+
+    for pack in conformance_packs:
+        process_conformance_pack(pack, workload_id, dry_run)
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Well-Architected Tool update completed')
+    }
