@@ -85,6 +85,10 @@ def generate_summarized_notes_for_rule(rule_data):
     Generate summarized notes with resource counts by type instead of individual resources.
     Skip rules with no resources evaluated.
 
+    For summarized format:
+    - Show counts of resources by type
+    - Skip rules with no resources
+
     Args:
         rule_data: Dictionary containing rule name, compliance type, and evaluation results
 
@@ -401,6 +405,15 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
     """
     Process a conformance pack, group rules by question ID, and update the Well-Architected Tool
     with consolidated information for each question.
+
+    For detailed format (when within character limits):
+    - Show all non-compliant resources with their IDs
+    - Show only the count of compliant resources
+    - Skip rules with no resources
+
+    For summarized format (when exceeding character limits):
+    - Show counts of resources by type
+    - Skip rules with no resources
     """
     logger.info(f"Processing conformance pack: {conformance_pack_name}")
     lens_alias = "wellarchitected"
@@ -510,17 +523,9 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
                     consolidated_notes.append(f"- {resource}\n")
                 consolidated_notes.append("\n")
 
-            # Add compliant resources
+            # For compliant resources, just show the count to save space
             if compliant_resources:
-                # If there are many compliant resources, summarize them
-                if len(compliant_resources) > 10:
-                    consolidated_notes.append(f"[+] {len(compliant_resources)} compliant resources\n\n")
-                else:
-                    consolidated_notes.append("[+] Compliant:\n")
-                    for resource in compliant_resources:
-                        consolidated_notes.append(f"- {resource}\n")
-                    consolidated_notes.append("\n")
-
+                consolidated_notes.append(f"[+] {len(compliant_resources)} compliant resources\n\n")
         # Convert list of strings to a single string
         detailed_notes = ''.join(consolidated_notes)
 
