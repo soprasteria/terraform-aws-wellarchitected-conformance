@@ -53,6 +53,98 @@ MAX_NOTES_LENGTH = 2080
 # Safety margin for notes to ensure we don't exceed the limit
 NOTES_SAFETY_MARGIN = 50
 
+def count_resources_by_type(evaluation_results):
+    """
+    Group resources by type and compliance status, returning counts for each.
+
+    Args:
+        evaluation_results: List of evaluation results from AWS Config
+
+    Returns:
+        Dictionary with resource type counts by compliance status
+    """
+    resource_counts = {}
+
+    for result in evaluation_results:
+        resource_type = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceType')
+        resource_compliance = result.get('ComplianceType')
+
+        if not resource_type:
+            continue
+
+        if resource_type not in resource_counts:
+            resource_counts[resource_type] = {'COMPLIANT': 0, 'NON_COMPLIANT': 0}
+
+        if resource_compliance in resource_counts[resource_type]:
+            resource_counts[resource_type][resource_compliance] += 1
+
+    return resource_counts
+
+def generate_summarized_notes_for_rule(rule_data):
+    """
+    Generate summarized notes with resource counts by type instead of individual resources.
+
+    Args:
+        rule_data: Dictionary containing rule name, compliance type, and evaluation results
+
+    Returns:
+        String with summarized notes content
+    """
+    rule_name = rule_data['rule_name']
+    compliance_type = rule_data['compliance_type']
+    evaluation_results = rule_data['evaluation_results']
+
+    notes = []
+    notes.append(f"**{rule_name}** ({compliance_type})\n")
+
+    if not evaluation_results:
+        notes.append("No resources evaluated.\n\n")
+        return ''.join(notes)
+
+    # Get counts by resource type
+    resource_counts = count_resources_by_type(evaluation_results)
+
+    # Add non-compliant resources first (by type)
+    non_compliant_types = []
+    for resource_type, counts in resource_counts.items():
+        if counts['NON_COMPLIANT'] > 0:
+            non_compliant_types.append(f"- {resource_type}: {counts['NON_COMPLIANT']} resources")
+
+    if non_compliant_types:
+        notes.append("[!] Non-compliant:\n")
+        notes.extend(f"{item}\n" for item in non_compliant_types)
+        notes.append("\n")
+
+    # Add compliant resources (by type)
+    compliant_types = []
+    for resource_type, counts in resource_counts.items():
+        if counts['COMPLIANT'] > 0:
+            compliant_types.append(f"- {resource_type}: {counts['COMPLIANT']} resources")
+
+    if compliant_types:
+        notes.append("[+] Compliant:\n")
+        notes.extend(f"{item}\n" for item in compliant_types)
+        notes.append("\n")
+
+    return ''.join(notes)
+
+def generate_summarized_notes_for_question(rules_data):
+    """
+    Generate summarized notes for all rules associated with a question.
+
+    Args:
+        rules_data: List of dictionaries containing rule data
+
+    Returns:
+        String with summarized notes content for all rules
+    """
+    all_notes = []
+
+    for rule_data in rules_data:
+        all_notes.append(generate_summarized_notes_for_rule(rule_data))
+
+    return ''.join(all_notes)
+
 def get_question_mapping(workload_id, pillar):
     """
     Dynamically generate question mapping by listing answers for the pillar
@@ -100,8 +192,7 @@ def get_conformance_pack_details(conformance_pack_name):
     """Get details of a conformance pack including its rules."""
     try:
         response = config_client.describe_conformance_pack_compliance(
-            ConformancePackName=conformance_pack_name,
-            Limit=100
+            ConformancePackName=conformance_pack_name
         )
         return response.get('ConformancePackRuleComplianceList', [])
     except ClientError as e:
@@ -113,8 +204,7 @@ def get_rule_details(rule_name):
     try:
         response = config_client.get_compliance_details_by_config_rule(
             ConfigRuleName=rule_name,
-            ComplianceTypes=['NON_COMPLIANT', 'COMPLIANT'],
-            Limit=100
+            ComplianceTypes=['NON_COMPLIANT', 'COMPLIANT']
         )
         return response.get('EvaluationResults', [])
     except ClientError as e:
@@ -165,32 +255,35 @@ def update_wellarchitected_notes(workload_id, lens_alias, question_id, consolida
         # Check if the updated notes exceed the character limit
         if len(updated_notes) > MAX_NOTES_LENGTH - NOTES_SAFETY_MARGIN:
             logger.warning(f"Updated notes for question {question_id} exceed the character limit: {len(updated_notes)} characters")
-            # Truncate the notes to fit within the limit
-            max_safe_length = MAX_NOTES_LENGTH - NOTES_SAFETY_MARGIN
-            if start_idx >= 0 and end_idx >= 0 and end_idx > start_idx:
-                # If we have existing sections, preserve the structure but truncate the new section
-                before_section = current_notes[:start_idx]
-                after_section = current_notes[end_idx + len(end_marker):]
 
-                # Calculate how much space we have for the new section
-                available_space = max_safe_length - len(before_section) - len(after_section) - len(start_marker) - len(end_marker) - 50  # Extra buffer
+            # Switch to summarized format for all rules in this question
+            # This is handled by the caller who will pass in summarized notes instead
 
-                if available_space > 200:  # Ensure we have enough space for meaningful content
-                    truncated_content = consolidated_notes[:available_space - 50]
-                    truncated_content += "\n[Content truncated due to size limits]"
-
-                    updated_notes = f"{before_section}{start_marker}\n{truncated_content}\n{end_marker}{after_section}"
-                else:
-                    # Not enough space, create a minimal report
-                    updated_notes = f"{before_section}{start_marker}\n[Content truncated due to size limits]\n{end_marker}{after_section}"
-            else:
-                # No existing sections, truncate the whole notes
+            # Ensure we don't exceed the limit even with summarized notes
+            if len(updated_notes) > MAX_NOTES_LENGTH - NOTES_SAFETY_MARGIN:
                 # Calculate safe length to ensure we have room for the markers and truncation message
-                safe_length = max_safe_length - len(start_marker) - len(end_marker) - 40
-                truncated_notes = current_notes[:safe_length] if current_notes else ""
+                safe_length = MAX_NOTES_LENGTH - len(start_marker) - len(end_marker) - 100
 
-                # Always include both start and end markers
-                updated_notes = f"{truncated_notes}\n{start_marker}\n[Content truncated due to size limits]\n{end_marker}"
+                if start_idx >= 0 and end_idx >= 0 and end_idx > start_idx:
+                    # If we have existing sections, preserve the structure but truncate the new section
+                    before_section = current_notes[:start_idx]
+                    after_section = current_notes[end_idx + len(end_marker):]
+
+                    # Calculate how much space we have for the new section
+                    available_space = MAX_NOTES_LENGTH - NOTES_SAFETY_MARGIN - len(before_section) - len(after_section) - len(start_marker) - len(end_marker)
+
+                    if available_space > 100:
+                        # We have enough space for a truncated summary
+                        truncated_content = consolidated_notes[:available_space - 50]
+                        truncated_content += "\n[Content truncated due to size limits]"
+                        updated_notes = f"{before_section}{start_marker}\n{truncated_content}\n{end_marker}{after_section}"
+                    else:
+                        # Not enough space even for a summary
+                        updated_notes = f"{before_section}{start_marker}\n[Content truncated due to size limits]\n{end_marker}{after_section}"
+                else:
+                    # No existing sections
+                    truncated_notes = current_notes[:safe_length] if current_notes else ""
+                    updated_notes = f"{truncated_notes}\n{start_marker}\n[Content truncated due to size limits]\n{end_marker}"
 
         # Update the answer with new notes
         wellarchitected_client.update_answer(
@@ -204,6 +297,64 @@ def update_wellarchitected_notes(workload_id, lens_alias, question_id, consolida
         return True
     except ClientError as e:
         logger.error(f"Error updating Well-Architected Tool: {e}")
+        return False
+
+def clean_all_notes(workload_id, dry_run=True):
+    """
+    Clean all notes for a workload by setting them to empty strings.
+
+    Args:
+        workload_id: The Well-Architected workload ID
+        dry_run: Whether to run in dry-run mode (no actual updates)
+
+    Returns:
+        Boolean indicating success or failure
+    """
+    lens_alias = "wellarchitected"
+    success = True
+
+    try:
+        # Get all pillars for this workload
+        pillars = ["security", "reliability", "costOptimization", "operationalExcellence", "performance", "sustainability"]
+
+        for pillar in pillars:
+            logger.info(f"Cleaning notes for pillar: {pillar}")
+
+            try:
+                # Get all questions for this pillar
+                response = wellarchitected_client.list_answers(
+                    WorkloadId=workload_id,
+                    LensAlias=lens_alias,
+                    PillarId=pillar,
+                    MaxResults=50
+                )
+
+                questions = response.get('AnswerSummaries', [])
+                logger.info(f"Found {len(questions)} questions for pillar {pillar}")
+
+                for question in questions:
+                    question_id = question.get('QuestionId')
+                    if not question_id:
+                        continue
+
+                    # Use update_wellarchitected_notes function with empty notes
+                    if not update_wellarchitected_notes(
+                        workload_id=workload_id,
+                        lens_alias=lens_alias,
+                        question_id=question_id,
+                        consolidated_notes="",
+                        dry_run=dry_run
+                    ):
+                        logger.error(f"Failed to clear notes for question {question_id} in pillar {pillar}")
+                        success = False
+
+            except ClientError as e:
+                logger.error(f"Error listing answers for pillar {pillar}: {e}")
+                success = False
+
+        return success
+    except Exception as e:
+        logger.error(f"Unexpected error cleaning notes: {e}")
         return False
 
 def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
@@ -281,6 +432,7 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
 
     # Second pass: process each question and update with consolidated information
     for question_id, rules_data in question_rule_mapping.items():
+        # First try to generate detailed notes with all resource information
         consolidated_notes = []
 
         for rule_data in rules_data:
@@ -289,7 +441,7 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
             evaluation_results = rule_data['evaluation_results']
 
             # Add rule header - more compact format
-            consolidated_notes.append(f"**{rule_name}**\n")
+            consolidated_notes.append(f"**{rule_name}** ({compliance_type})\n")
 
             if not evaluation_results:
                 consolidated_notes.append("No resources evaluated.\n\n")
@@ -303,7 +455,7 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
                     resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
                     resource_compliance = result.get('ComplianceType')
 
-                    resource_info = f"[{resource_type}] {resource_id}"
+                    resource_info = f"{resource_type}: {resource_id}"
 
                     if resource_compliance == 'COMPLIANT':
                         compliant_resources.append(resource_info)
@@ -328,113 +480,101 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
                             consolidated_notes.append(f"- {resource}\n")
                         consolidated_notes.append("\n")
 
-            #consolidated_notes.append("\n")
+        # Convert list of strings to a single string
+        detailed_notes = ''.join(consolidated_notes)
 
-        # Join all notes into a single string
-        notes_content = ''.join(consolidated_notes)
+        # Check if the detailed notes would exceed the character limit
+        # First, get the current answer to check the total length
+        try:
+            response = wellarchitected_client.get_answer(
+                WorkloadId=workload_id,
+                LensAlias=lens_alias,
+                QuestionId=question_id
+            )
+            current_notes = response.get('Answer', {}).get('Notes', '')
 
-        # Update Well-Architected Tool with consolidated notes for this question
-        update_wellarchitected_notes(workload_id, lens_alias, question_id, notes_content, dry_run)
+            # Calculate the total length with detailed notes
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            start_marker = f"<!-- WA-{timestamp} -->"
+            end_marker = "<!-- /WA -->"
 
-def clean_all_notes(workload_id, dry_run=True):
-    """
-    Clean all notes for a workload by setting them to empty strings.
+            # Estimate the total length
+            estimated_length = len(current_notes) + len(detailed_notes) + len(start_marker) + len(end_marker) + 20
 
-    Args:
-        workload_id: The Well-Architected workload ID
-        dry_run: Whether to run in dry-run mode (no actual updates)
+            # If the estimated length exceeds the limit, switch to summarized format
+            if estimated_length > MAX_NOTES_LENGTH - NOTES_SAFETY_MARGIN:
+                logger.info(f"Switching to summarized format for question {question_id} due to length constraints")
+                summarized_notes = generate_summarized_notes_for_question(rules_data)
+                update_wellarchitected_notes(workload_id, lens_alias, question_id, summarized_notes, dry_run)
+            else:
+                # Use detailed notes
+                update_wellarchitected_notes(workload_id, lens_alias, question_id, detailed_notes, dry_run)
 
-    Returns:
-        Boolean indicating success or failure
-    """
-    lens_alias = "wellarchitected"
-    success = True
-
-    try:
-        # Get all pillars for this workload
-        pillars = ["security", "reliability", "costOptimization", "operationalExcellence", "performance", "sustainability"]
-
-        for pillar in pillars:
-            logger.info(f"Cleaning notes for pillar: {pillar}")
-
-            try:
-                # Get all questions for this pillar
-                response = wellarchitected_client.list_answers(
-                    WorkloadId=workload_id,
-                    LensAlias=lens_alias,
-                    PillarId=pillar,
-                    MaxResults=50
-                )
-
-                questions = response.get('AnswerSummaries', [])
-                logger.info(f"Found {len(questions)} questions for pillar {pillar}")
-
-                for question in questions:
-                    question_id = question.get('QuestionId')
-                    if not question_id:
-                        continue
-
-                    if not wellarchitected_client.update_answer(
-                        WorkloadId=workload_id,
-                        LensAlias=lens_alias,
-                        QuestionId=question_id,
-                        Notes=""
-                    ):
-                        logger.error(f"Failed to clear notes for question {question_id} in pillar {pillar}")
-                        success = False
-
-            except ClientError as e:
-                logger.error(f"Error listing answers for pillar {pillar}: {e}")
-                success = False
-
-        return success
-    except Exception as e:
-        logger.error(f"Unexpected error cleaning notes: {e}")
-        return False
+        except ClientError as e:
+            logger.error(f"Error checking notes length for question {question_id}: {e}")
+            # Fall back to summarized format
+            summarized_notes = generate_summarized_notes_for_question(rules_data)
+            update_wellarchitected_notes(workload_id, lens_alias, question_id, summarized_notes, dry_run)
 
 def lambda_handler(event, context):
-    """Lambda handler function."""
-    logger.info(f"Event received: {json.dumps(event)}")
+    """
+    Lambda function handler that processes conformance packs and updates the Well-Architected Tool.
 
-    # Get parameters from event
+    Args:
+        event: Lambda event object containing parameters
+        context: Lambda context object
+
+    Returns:
+        Dictionary with status and message
+    """
+    logger.info("Starting Well-Architected Tool updater")
+
+    # Get parameters from the event
     workload_id = event.get('workload_id')
     dry_run = event.get('dry_run', True)
     clean_notes = event.get('clean_notes', False)
 
     if not workload_id:
+        error_msg = "No workload_id provided in the event"
+        logger.error(error_msg)
         return {
             'statusCode': 400,
-            'body': json.dumps('workload_id parameter is required')
+            'body': json.dumps({
+                'status': 'error',
+                'message': error_msg
+            })
         }
 
-    # If clean_notes is True, clear all notes for the workload
+    # Clean all notes if requested
     if clean_notes:
-        logger.info(f"Clean notes mode enabled. Will clear all notes for workload {workload_id}")
-        if clean_all_notes(workload_id, dry_run):
-            return {
-                'statusCode': 200,
-                'body': json.dumps('Well-Architected Tool notes cleaned successfully')
-            }
-        else:
+        logger.info(f"Cleaning all notes for workload {workload_id}")
+        if not clean_all_notes(workload_id, dry_run):
+            error_msg = "Failed to clean notes"
+            logger.error(error_msg)
             return {
                 'statusCode': 500,
-                'body': json.dumps('Failed to clean Well-Architected Tool notes')
+                'body': json.dumps({
+                    'status': 'error',
+                    'message': error_msg
+                })
             }
 
-    # List of conformance packs to process from environment variables
+    # Process each conformance pack
     conformance_packs = [
         SECURITY_CONFORMANCE_PACK,
         RELIABILITY_CONFORMANCE_PACK,
         COST_OPTIMIZATION_CONFORMANCE_PACK
     ]
 
-    logger.info(f"Processing conformance packs: {conformance_packs}")
-    logger.info(f"Running in {'dry-run' if dry_run else 'live'} mode")
+    for conformance_pack in conformance_packs:
+        process_conformance_pack(conformance_pack, workload_id, dry_run)
 
-    for pack in conformance_packs:
-        process_conformance_pack(pack, workload_id, dry_run)
-
+    logger.info("Well-Architected Tool updater completed successfully")
     return {
         'statusCode': 200,
-        'body': json.dumps('Well-Architected Tool update completed')
+        'body': json.dumps({
+            'status': 'success',
+            'message': 'Well-Architected Tool updated successfully',
+            'dry_run': dry_run
+        })
     }
