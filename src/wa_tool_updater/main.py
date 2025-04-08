@@ -51,7 +51,7 @@ PILLAR_MAPPING = {
 # Maximum character limit for Well-Architected Tool notes
 MAX_NOTES_LENGTH = 2080
 # Safety margin for notes to ensure we don't exceed the limit
-NOTES_SAFETY_MARGIN = 50
+NOTES_SAFETY_MARGIN = 30
 
 def count_resources_by_type(evaluation_results):
     """
@@ -83,26 +83,31 @@ def count_resources_by_type(evaluation_results):
 def generate_summarized_notes_for_rule(rule_data):
     """
     Generate summarized notes with resource counts by type instead of individual resources.
+    Skip rules with no resources evaluated.
 
     Args:
         rule_data: Dictionary containing rule name, compliance type, and evaluation results
 
     Returns:
-        String with summarized notes content
+        String with summarized notes content or None if no resources evaluated
     """
     rule_name = rule_data['rule_name']
     compliance_type = rule_data['compliance_type']
     evaluation_results = rule_data['evaluation_results']
 
-    notes = []
-    notes.append(f"**{rule_name}** ({compliance_type})\n")
-
+    # Skip rules with no resources evaluated
     if not evaluation_results:
-        notes.append("No resources evaluated.\n\n")
-        return ''.join(notes)
+        return None
 
     # Get counts by resource type
     resource_counts = count_resources_by_type(evaluation_results)
+
+    # Skip rules with no resources in scope (could happen if resource types couldn't be determined)
+    if not resource_counts:
+        return None
+
+    notes = []
+    notes.append(f"**{rule_name}** ({compliance_type})\n")
 
     # Add non-compliant resources first (by type)
     non_compliant_types = []
@@ -131,17 +136,20 @@ def generate_summarized_notes_for_rule(rule_data):
 def generate_summarized_notes_for_question(rules_data):
     """
     Generate summarized notes for all rules associated with a question.
+    Skip rules with no resources evaluated.
 
     Args:
         rules_data: List of dictionaries containing rule data
 
     Returns:
-        String with summarized notes content for all rules
+        String with summarized notes content for all rules with resources
     """
     all_notes = []
 
     for rule_data in rules_data:
-        all_notes.append(generate_summarized_notes_for_rule(rule_data))
+        rule_notes = generate_summarized_notes_for_rule(rule_data)
+        if rule_notes:  # Only include rules that have resources
+            all_notes.append(rule_notes)
 
     return ''.join(all_notes)
 
@@ -440,45 +448,46 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
             compliance_type = rule_data['compliance_type']
             evaluation_results = rule_data['evaluation_results']
 
+            # Skip rules with no resources evaluated
+            if not evaluation_results:
+                continue
+
             # Add rule header - more compact format
             consolidated_notes.append(f"**{rule_name}** ({compliance_type})\n")
 
-            if not evaluation_results:
-                consolidated_notes.append("No resources evaluated.\n\n")
-            else:
-                # Group results by compliance type for better readability
-                compliant_resources = []
-                non_compliant_resources = []
+            # Group results by compliance type for better readability
+            compliant_resources = []
+            non_compliant_resources = []
 
-                for result in evaluation_results:
-                    resource_type = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceType')
-                    resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
-                    resource_compliance = result.get('ComplianceType')
+            for result in evaluation_results:
+                resource_type = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceType')
+                resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
+                resource_compliance = result.get('ComplianceType')
 
-                    resource_info = f"{resource_type}: {resource_id}"
+                resource_info = f"{resource_type}: {resource_id}"
 
-                    if resource_compliance == 'COMPLIANT':
-                        compliant_resources.append(resource_info)
-                    elif resource_compliance == 'NON_COMPLIANT':
-                        non_compliant_resources.append(resource_info)
+                if resource_compliance == 'COMPLIANT':
+                    compliant_resources.append(resource_info)
+                elif resource_compliance == 'NON_COMPLIANT':
+                    non_compliant_resources.append(resource_info)
 
-                # Add non-compliant resources first as they're more important
-                if non_compliant_resources:
-                    consolidated_notes.append("[!] Non-compliant:\n")
-                    for resource in non_compliant_resources:
+            # Add non-compliant resources first as they're more important
+            if non_compliant_resources:
+                consolidated_notes.append("[!] Non-compliant:\n")
+                for resource in non_compliant_resources:
+                    consolidated_notes.append(f"- {resource}\n")
+                consolidated_notes.append("\n")
+
+            # Add compliant resources
+            if compliant_resources:
+                # If there are many compliant resources, summarize them
+                if len(compliant_resources) > 10:
+                    consolidated_notes.append(f"[+] {len(compliant_resources)} compliant resources\n\n")
+                else:
+                    consolidated_notes.append("[+] Compliant:\n")
+                    for resource in compliant_resources:
                         consolidated_notes.append(f"- {resource}\n")
                     consolidated_notes.append("\n")
-
-                # Add compliant resources
-                if compliant_resources:
-                    # If there are many compliant resources, summarize them
-                    if len(compliant_resources) > 10:
-                        consolidated_notes.append(f"[+] {len(compliant_resources)} compliant resources\n\n")
-                    else:
-                        consolidated_notes.append("[+] Compliant:\n")
-                        for resource in compliant_resources:
-                            consolidated_notes.append(f"- {resource}\n")
-                        consolidated_notes.append("\n")
 
         # Convert list of strings to a single string
         detailed_notes = ''.join(consolidated_notes)
