@@ -69,3 +69,8 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+variable "clean_notes" {
+  description = "Whether to clean all notes in the Well-Architected Tool workload before updating"
+  type        = bool
+  default     = false
+}

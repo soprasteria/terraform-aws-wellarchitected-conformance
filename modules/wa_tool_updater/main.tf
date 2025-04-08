@@ -68,6 +68,7 @@ resource "aws_cloudwatch_event_target" "wa_tool_updater_target" {
   input = jsonencode({
     workload_id = var.workload_id
     dry_run     = var.dry_run
+    clean_notes = var.clean_notes
   })
 }
 

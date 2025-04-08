@@ -75,3 +75,8 @@ variable "wa_tool_updater_dry_run" {
   type        = bool
   default     = true
 }
+variable "wa_tool_updater_clean_notes" {
+  description = "Whether to clean all notes in the Well-Architected Tool workload before updating."
+  type        = bool
+  default     = false
+}

@@ -129,6 +129,7 @@ You can also view the compliance status for each check, prefixed with the relate
 | <a name="input_deploy_wa_tool_updater"></a> [deploy\_wa\_tool\_updater](#input\_deploy\_wa\_tool\_updater) | Deploy Lambda function to update Well-Architected Tool with conformance data. | `bool` | `false` | no |
 | <a name="input_recording_frequency"></a> [recording\_frequency](#input\_recording\_frequency) | AWS Config Recording Frequency. Valid options: DAILY or CONTINUOUS. | `string` | `"DAILY"` | no |
 | <a name="input_scheduled_config_custom_lambda_periodic_trigger_interval"></a> [scheduled\_config\_custom\_lambda\_periodic\_trigger\_interval](#input\_scheduled\_config\_custom\_lambda\_periodic\_trigger\_interval) | AWS Config Custom Lambda Periodic Trigger Interval. Default value of Twelve\_Hours ensures updates within the DAILY window. | `string` | `"Twelve_Hours"` | no |
+| <a name="input_wa_tool_updater_clean_notes"></a> [wa\_tool\_updater\_clean\_notes](#input\_wa\_tool\_updater\_clean\_notes) | Whether to clean all notes in the Well-Architected Tool workload before updating. | `bool` | `false` | no |
 | <a name="input_wa_tool_updater_dry_run"></a> [wa\_tool\_updater\_dry\_run](#input\_wa\_tool\_updater\_dry\_run) | Whether to run the Well-Architected Tool updater in dry-run mode (no actual updates). | `bool` | `true` | no |
 | <a name="input_wa_tool_workload_id"></a> [wa\_tool\_workload\_id](#input\_wa\_tool\_workload\_id) | ID of the Well-Architected Tool workload to update. | `string` | `""` | no |
 

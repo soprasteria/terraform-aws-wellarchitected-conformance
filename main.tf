@@ -231,6 +231,7 @@ module "wa_tool_updater" {
   # Well-Architected Tool configuration
   workload_id = var.wa_tool_workload_id
   dry_run     = var.wa_tool_updater_dry_run
+  clean_notes = var.wa_tool_updater_clean_notes
 
   # Conformance pack names
   security_conformance_pack_name          = var.deploy_security_conformance_pack ? aws_config_conformance_pack.well_architected_conformance_pack_security[0].name : "Well-Architected-Security"

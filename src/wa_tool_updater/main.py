@@ -112,7 +112,7 @@ def get_rule_details(rule_name):
         logger.error(f"Error getting rule details: {e}")
         return []
 
-def update_wellarchitected_notes(workload_id, lens_alias, question_id, notes, dry_run=True):
+def update_wellarchitected_notes(workload_id, lens_alias, question_id, notes, rule_name, dry_run=True):
     """Update notes for a specific question in the Well-Architected Tool."""
     if dry_run:
         logger.info(f"DRY RUN: Would update question {question_id} with notes: {notes}")
@@ -126,10 +126,34 @@ def update_wellarchitected_notes(workload_id, lens_alias, question_id, notes, dr
             QuestionId=question_id
         )
 
-        # Update the notes, preserving existing content
+        # Update the notes, preserving existing content but replacing previous evaluation for this rule
         current_notes = response.get('Answer', {}).get('Notes', '')
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        updated_notes = f"{current_notes}\n\n--- AWS Config Compliance Update: {timestamp} ---\n{notes}"
+
+        # Define start and end markers for this rule's evaluation results
+        start_marker = f"<!-- BEGIN_{rule_name} -->"
+        end_marker = f"<!-- END_{rule_name} -->"
+
+        # Check if we already have evaluation results for this rule
+        start_idx = current_notes.find(start_marker)
+        end_idx = current_notes.find(end_marker)
+
+        if start_idx >= 0 and end_idx >= 0 and end_idx > start_idx:
+            # Replace existing evaluation results for this rule
+            before_section = current_notes[:start_idx]
+            after_section = current_notes[end_idx + len(end_marker):]
+            new_section = f"{start_marker}\n--- AWS Config Compliance Update: {timestamp} ---\n{notes}\n{end_marker}"
+            updated_notes = f"{before_section}{new_section}{after_section}"
+        else:
+            # Add new evaluation results
+            new_section = f"\n\n{start_marker}\n--- AWS Config Compliance Update: {timestamp} ---\n{notes}\n{end_marker}"
+            updated_notes = f"{current_notes}{new_section}"
+
+        # Check if the updated notes exceed the character limit
+        if len(updated_notes) > 2080:
+            logger.error(f"Updated notes for question {question_id} exceed the 2080 character limit: {len(updated_notes)} characters")
+            # Truncate the notes to fit within the limit
+            updated_notes = updated_notes[:2070] + "..."
 
         # Update the answer with new notes
         wellarchitected_client.update_answer(
@@ -215,12 +239,18 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
                 resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
                 resource_compliance = result.get('ComplianceType')
 
-                notes.append(f"- Type: {resource_type}, ID: {resource_id}, Status: {resource_compliance}\n")
+                notes.append(f"- {resource_compliance}:{resource_type}, ID: {resource_id}\n")
 
-        notes = ''.join(notes)
+        notes_content = ''.join(notes)
+
+        # Check if notes exceed character limit
+        if len(notes_content) > 2080:
+            logger.error(f"Notes for rule {rule_name} exceed the 2080 character limit: {len(notes_content)} characters")
+            # Truncate the notes to fit within the limit
+            notes_content = notes_content[:2070] + "..."
 
         # Update Well-Architected Tool
-        update_wellarchitected_notes(workload_id, lens_alias, matching_question_id, notes, dry_run)
+        update_wellarchitected_notes(workload_id, lens_alias, matching_question_id, notes_content, rule_name, dry_run)
 
 def lambda_handler(event, context):
     """Lambda handler function."""
@@ -229,12 +259,27 @@ def lambda_handler(event, context):
     # Get parameters from event
     workload_id = event.get('workload_id')
     dry_run = event.get('dry_run', True)
+    clean_notes = event.get('clean_notes', False)
 
     if not workload_id:
         return {
             'statusCode': 400,
             'body': json.dumps('workload_id parameter is required')
         }
+
+    # If clean_notes is True, clear all notes for the workload
+    if clean_notes:
+        logger.info(f"Clean notes mode enabled. Will clear all notes for workload {workload_id}")
+        if clean_all_notes(workload_id, dry_run):
+            return {
+                'statusCode': 200,
+                'body': json.dumps('Well-Architected Tool notes cleaned successfully')
+            }
+        else:
+            return {
+                'statusCode': 500,
+                'body': json.dumps('Failed to clean Well-Architected Tool notes')
+            }
 
     # List of conformance packs to process from environment variables
     conformance_packs = [
@@ -244,6 +289,7 @@ def lambda_handler(event, context):
     ]
 
     logger.info(f"Processing conformance packs: {conformance_packs}")
+    logger.info(f"Running in {'dry-run' if dry_run else 'live'} mode")
 
     for pack in conformance_packs:
         process_conformance_pack(pack, workload_id, dry_run)
@@ -252,3 +298,65 @@ def lambda_handler(event, context):
         'statusCode': 200,
         'body': json.dumps('Well-Architected Tool update completed')
     }
+def clean_all_notes(workload_id, dry_run=True):
+    """
+    Clean all notes for a workload by setting them to empty strings.
+
+    Args:
+        workload_id: The Well-Architected workload ID
+        dry_run: Whether to run in dry-run mode (no actual updates)
+
+    Returns:
+        Boolean indicating success or failure
+    """
+    lens_alias = "wellarchitected"
+    success = True
+
+    try:
+        # Get all pillars for this workload
+        pillars = ["security", "reliability", "costOptimization", "operationalExcellence", "performance", "sustainability"]
+
+        for pillar in pillars:
+            logger.info(f"Cleaning notes for pillar: {pillar}")
+
+            try:
+                # Get all questions for this pillar
+                response = wellarchitected_client.list_answers(
+                    WorkloadId=workload_id,
+                    LensAlias=lens_alias,
+                    PillarId=pillar,
+                    MaxResults=50
+                )
+
+                questions = response.get('AnswerSummaries', [])
+                logger.info(f"Found {len(questions)} questions for pillar {pillar}")
+
+                for question in questions:
+                    question_id = question.get('QuestionId')
+                    if not question_id:
+                        continue
+
+                    if dry_run:
+                        logger.info(f"DRY RUN: Would clear notes for question {question_id} in pillar {pillar}")
+                    else:
+                        try:
+                            # Update the answer with empty notes
+                            wellarchitected_client.update_answer(
+                                WorkloadId=workload_id,
+                                LensAlias=lens_alias,
+                                QuestionId=question_id,
+                                Notes=""
+                            )
+                            logger.info(f"Successfully cleared notes for question {question_id} in pillar {pillar}")
+                        except ClientError as e:
+                            logger.error(f"Error clearing notes for question {question_id} in pillar {pillar}: {e}")
+                            success = False
+
+            except ClientError as e:
+                logger.error(f"Error listing answers for pillar {pillar}: {e}")
+                success = False
+
+        return success
+    except Exception as e:
+        logger.error(f"Unexpected error cleaning notes: {e}")
+        return False
