@@ -100,7 +100,8 @@ def get_conformance_pack_details(conformance_pack_name):
     """Get details of a conformance pack including its rules."""
     try:
         response = config_client.describe_conformance_pack_compliance(
-            ConformancePackName=conformance_pack_name
+            ConformancePackName=conformance_pack_name,
+            Limit=100
         )
         return response.get('ConformancePackRuleComplianceList', [])
     except ClientError as e:
@@ -112,7 +113,8 @@ def get_rule_details(rule_name):
     try:
         response = config_client.get_compliance_details_by_config_rule(
             ConfigRuleName=rule_name,
-            ComplianceTypes=['NON_COMPLIANT', 'COMPLIANT']
+            ComplianceTypes=['NON_COMPLIANT', 'COMPLIANT'],
+            Limit=100
         )
         return response.get('EvaluationResults', [])
     except ClientError as e:
@@ -139,16 +141,16 @@ def update_wellarchitected_notes(workload_id, lens_alias, question_id, consolida
         # Get timestamp for the report
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Define markers for our automated updates - include timestamp in the start marker
-        start_marker = f"<!-- BEGIN_AUTOMATED_COMPLIANCE_REPORT_{timestamp} -->"
-        end_marker = "<!-- END_AUTOMATED_COMPLIANCE_REPORT -->"
+        # Define minimal markers for our automated updates - include timestamp in the start marker
+        start_marker = f"<!-- WA-{timestamp} -->"
+        end_marker = "<!-- /WA -->"
 
         # Check if we already have evaluation results - look for the generic part of the marker
-        start_idx = current_notes.find("<!-- BEGIN_AUTOMATED_COMPLIANCE_REPORT_")
+        start_idx = current_notes.find("<!-- WA-")
         end_idx = current_notes.find(end_marker)
 
-        # Create the new section with the report content
-        new_section = f"{start_marker}\n\n{consolidated_notes}\n{end_marker}"
+        # Create the new section with the report content - no extra headers to save space
+        new_section = f"{start_marker}\n{consolidated_notes}\n{end_marker}"
 
         if start_idx >= 0 and end_idx >= 0 and end_idx > start_idx:
             # Replace existing evaluation results
@@ -183,7 +185,12 @@ def update_wellarchitected_notes(workload_id, lens_alias, question_id, consolida
                     updated_notes = f"{before_section}{start_marker}\n[Content truncated due to size limits]\n{end_marker}{after_section}"
             else:
                 # No existing sections, truncate the whole notes
-                updated_notes = updated_notes[:max_safe_length - 40] + "\n[Content truncated due to size limits]"
+                # Calculate safe length to ensure we have room for the markers and truncation message
+                safe_length = max_safe_length - len(start_marker) - len(end_marker) - 40
+                truncated_notes = current_notes[:safe_length] if current_notes else ""
+
+                # Always include both start and end markers
+                updated_notes = f"{truncated_notes}\n{start_marker}\n[Content truncated due to size limits]\n{end_marker}"
 
         # Update the answer with new notes
         wellarchitected_client.update_answer(
@@ -281,8 +288,8 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
             compliance_type = rule_data['compliance_type']
             evaluation_results = rule_data['evaluation_results']
 
-            # Add rule header
-            consolidated_notes.append(f"Rule: {rule_name}\n")
+            # Add rule header - more compact format
+            consolidated_notes.append(f"**{rule_name}** ({compliance_type})\n")
 
             if not evaluation_results:
                 consolidated_notes.append("No resources evaluated.\n\n")
@@ -305,21 +312,21 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
 
                 # Add non-compliant resources first as they're more important
                 if non_compliant_resources:
-                    consolidated_notes.append("Non-compliant resources:\n")
+                    consolidated_notes.append("[!] Non-compliant:\n")
                     for resource in non_compliant_resources:
                         consolidated_notes.append(f"- {resource}\n")
                     consolidated_notes.append("\n")
 
                 # Add compliant resources
                 if compliant_resources:
-                    consolidated_notes.append("Compliant resources:\n")
                     # If there are many compliant resources, summarize them
                     if len(compliant_resources) > 10:
-                        consolidated_notes.append(f"- {len(compliant_resources)} compliant resources\n")
+                        consolidated_notes.append(f"[+] {len(compliant_resources)} compliant resources\n\n")
                     else:
+                        consolidated_notes.append("[+] Compliant:\n")
                         for resource in compliant_resources:
                             consolidated_notes.append(f"- {resource}\n")
-                    consolidated_notes.append("\n")
+                        consolidated_notes.append("\n")
 
             #consolidated_notes.append("\n")
 
