@@ -51,7 +51,7 @@ PILLAR_MAPPING = {
 # Maximum character limit for Well-Architected Tool notes
 MAX_NOTES_LENGTH = 2080
 # Safety margin for notes to ensure we don't exceed the limit
-NOTES_SAFETY_MARGIN = 30
+NOTES_SAFETY_MARGIN = 10
 
 def count_resources_by_type(evaluation_results):
     """
