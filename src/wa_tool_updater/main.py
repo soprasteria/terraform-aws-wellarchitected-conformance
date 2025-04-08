@@ -117,7 +117,8 @@ def generate_summarized_notes_for_rule(rule_data):
     non_compliant_types = []
     for resource_type, counts in resource_counts.items():
         if counts['NON_COMPLIANT'] > 0:
-            non_compliant_types.append(f"- {resource_type}: {counts['NON_COMPLIANT']} resources")
+            resource_text = "resource" if counts['NON_COMPLIANT'] == 1 else "resources"
+            non_compliant_types.append(f"- {resource_type}: {counts['NON_COMPLIANT']} {resource_text}")
 
     if non_compliant_types:
         notes.append("[!] Non-compliant:\n")
@@ -128,7 +129,8 @@ def generate_summarized_notes_for_rule(rule_data):
     compliant_types = []
     for resource_type, counts in resource_counts.items():
         if counts['COMPLIANT'] > 0:
-            compliant_types.append(f"- {resource_type}: {counts['COMPLIANT']} resources")
+            resource_text = "resource" if counts['COMPLIANT'] == 1 else "resources"
+            compliant_types.append(f"- {resource_type}: {counts['NON_COMPLIANT']} {resource_text}")
 
     if compliant_types:
         notes.append("[+] Compliant:\n")
