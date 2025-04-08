@@ -289,7 +289,7 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
             evaluation_results = rule_data['evaluation_results']
 
             # Add rule header - more compact format
-            consolidated_notes.append(f"**{rule_name}** ({compliance_type})\n")
+            consolidated_notes.append(f"**{rule_name}**\n")
 
             if not evaluation_results:
                 consolidated_notes.append("No resources evaluated.\n\n")
@@ -303,7 +303,7 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
                     resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
                     resource_compliance = result.get('ComplianceType')
 
-                    resource_info = f"{resource_type}: {resource_id}"
+                    resource_info = f"[{resource_type}] {resource_id}"
 
                     if resource_compliance == 'COMPLIANT':
                         compliant_resources.append(resource_info)
