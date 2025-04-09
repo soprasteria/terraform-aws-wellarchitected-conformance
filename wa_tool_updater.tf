@@ -47,5 +47,7 @@ module "lambda_function_wa_tool_updater" {
     }
   }
 
-  tags = var.tags
+  tags = {
+    Name = "Well-Architected-Tool-Updater"
+  }
 }
