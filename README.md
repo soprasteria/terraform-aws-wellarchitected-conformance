@@ -138,8 +138,6 @@ You can also view the compliance status for each check, prefixed with the relate
 
 | Name | Description |
 |------|-------------|
-| <a name="output_wa_tool_updater_lambda_arn"></a> [wa\_tool\_updater\_lambda\_arn](#output\_wa\_tool\_updater\_lambda\_arn) | n/a |
-| <a name="output_wa_tool_updater_lambda_name"></a> [wa\_tool\_updater\_lambda\_name](#output\_wa\_tool\_updater\_lambda\_name) | n/a |
 | <a name="output_well_architected_conformance_pack_cost_optimization_arn"></a> [well\_architected\_conformance\_pack\_cost\_optimization\_arn](#output\_well\_architected\_conformance\_pack\_cost\_optimization\_arn) | n/a |
 | <a name="output_well_architected_conformance_pack_iam_arn"></a> [well\_architected\_conformance\_pack\_iam\_arn](#output\_well\_architected\_conformance\_pack\_iam\_arn) | n/a |
 | <a name="output_well_architected_conformance_pack_reliability_arn"></a> [well\_architected\_conformance\_pack\_reliability\_arn](#output\_well\_architected\_conformance\_pack\_reliability\_arn) | n/a |

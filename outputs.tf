@@ -17,11 +17,3 @@ output "well_architected_conformance_pack_iam_arn" {
 output "well_architected_conformance_pack_security_template_arn" {
   value = aws_s3_object.cloudformation_wa_config_security_template.id
 }
-
-output "wa_tool_updater_lambda_arn" {
-  value = var.deploy_wa_tool_updater ? module.wa_tool_updater[0].lambda_function_arn : null
-}
-
-output "wa_tool_updater_lambda_name" {
-  value = var.deploy_wa_tool_updater ? module.wa_tool_updater[0].lambda_function_name : null
-}
