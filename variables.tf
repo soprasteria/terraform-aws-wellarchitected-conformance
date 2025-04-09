@@ -10,6 +10,12 @@ variable "scheduled_config_custom_lambda_periodic_trigger_interval" {
   default     = "Twelve_Hours"
 }
 
+variable "lambda_log_level" {
+  description = "Lambda log level. Valid values [DEBUG,INFO,WARNING,ERROR]."
+  type        = string
+  default     = "INFO"
+}
+
 variable "config_custom_lambda_python_runtime" {
   description = "Runtime for AWS Config Custom Lambda."
   type        = string
@@ -77,6 +83,42 @@ variable "wa_tool_updater_dry_run" {
 }
 variable "wa_tool_updater_clean_notes" {
   description = "Whether to clean all notes in the Well-Architected Tool workload before updating."
+  type        = bool
+  default     = false
+}
+
+variable "security_conformance_pack_name" {
+  description = "Name of the Security conformance pack"
+  type        = string
+  default     = "Well-Architected-Security"
+}
+
+variable "reliability_conformance_pack_name" {
+  description = "Name of the Reliability conformance pack"
+  type        = string
+  default     = "Well-Architected-Reliability"
+}
+
+variable "cost_optimization_conformance_pack_name" {
+  description = "Name of the Cost Optimization conformance pack"
+  type        = string
+  default     = "Well-Architected-Cost-Optimization"
+}
+
+variable "workload_id" {
+  description = "ID of the Well-Architected Tool workload to update"
+  type        = string
+  default     = ""
+}
+
+variable "dry_run" {
+  description = "Whether to run in dry-run mode (no actual updates)"
+  type        = bool
+  default     = true
+}
+
+variable "clean_notes" {
+  description = "Whether to clean all notes in the Well-Architected Tool workload before updating"
   type        = bool
   default     = false
 }

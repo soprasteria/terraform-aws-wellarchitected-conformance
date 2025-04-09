@@ -22,12 +22,14 @@ The Lambda function can be triggered manually or on a schedule. It expects the f
 ```json
 {
   "workload_id": "your-workload-id",
-  "dry_run": false
+  "dry_run": false,
+  "clean_notes": false
 }
 ```
 
 - `workload_id`: ID of the Well-Architected Tool workload to update
 - `dry_run`: Whether to run in dry-run mode (no actual updates)
+- `clean_notes`: Whether to clean the notes field for all questions. If true or 1, exits, does not update questions.
 
 ## Dynamic Question Mapping
 
