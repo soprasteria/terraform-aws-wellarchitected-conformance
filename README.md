@@ -75,7 +75,7 @@ You can also view the compliance status for each check, prefixed with the relate
 | <a name="module_lambda_function_wa_conformance_cost_03_aws_budgets"></a> [lambda\_function\_wa\_conformance\_cost\_03\_aws\_budgets](#module\_lambda\_function\_wa\_conformance\_cost\_03\_aws\_budgets) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
 | <a name="module_lambda_function_wa_conformance_cost_03_aws_cost_anomaly_detection"></a> [lambda\_function\_wa\_conformance\_cost\_03\_aws\_cost\_anomaly\_detection](#module\_lambda\_function\_wa\_conformance\_cost\_03\_aws\_cost\_anomaly\_detection) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
 | <a name="module_lambda_function_wa_conformance_cost_04_ec2_instances_without_auto_scaling"></a> [lambda\_function\_wa\_conformance\_cost\_04\_ec2\_instances\_without\_auto\_scaling](#module\_lambda\_function\_wa\_conformance\_cost\_04\_ec2\_instances\_without\_auto\_scaling) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
-| <a name="module_wa_tool_updater"></a> [wa\_tool\_updater](#module\_wa\_tool\_updater) | ./modules/wa_tool_updater | n/a |
+| <a name="module_lambda_function_wa_tool_updater"></a> [lambda\_function\_wa\_tool\_updater](#module\_lambda\_function\_wa\_tool\_updater) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
 
 ## Resources
 
@@ -118,7 +118,6 @@ You can also view the compliance status for each check, prefixed with the relate
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_clean_notes"></a> [clean\_notes](#input\_clean\_notes) | Whether to clean all notes in the Well-Architected Tool workload before updating | `bool` | `false` | no |
 | <a name="input_config_custom_lambda_cloudwatch_logs_retention_in_days"></a> [config\_custom\_lambda\_cloudwatch\_logs\_retention\_in\_days](#input\_config\_custom\_lambda\_cloudwatch\_logs\_retention\_in\_days) | AWS Config Custom Lambda CloudWatch Logs retention in days. | `number` | `90` | no |
 | <a name="input_config_custom_lambda_python_runtime"></a> [config\_custom\_lambda\_python\_runtime](#input\_config\_custom\_lambda\_python\_runtime) | Runtime for AWS Config Custom Lambda. | `string` | `"python3.12"` | no |
 | <a name="input_config_custom_lambda_timeout"></a> [config\_custom\_lambda\_timeout](#input\_config\_custom\_lambda\_timeout) | Timeout for AWS Config Custom Lambda in seconds. | `number` | `30` | no |
@@ -129,16 +128,11 @@ You can also view the compliance status for each check, prefixed with the relate
 | <a name="input_deploy_reliability_conformance_pack"></a> [deploy\_reliability\_conformance\_pack](#input\_deploy\_reliability\_conformance\_pack) | Deploy AWS Config Conformance Pack for Reliability. | `bool` | `true` | no |
 | <a name="input_deploy_security_conformance_pack"></a> [deploy\_security\_conformance\_pack](#input\_deploy\_security\_conformance\_pack) | Deploy AWS Config Conformance Pack for Security. | `bool` | `true` | no |
 | <a name="input_deploy_wa_tool_updater"></a> [deploy\_wa\_tool\_updater](#input\_deploy\_wa\_tool\_updater) | Deploy Lambda function to update Well-Architected Tool with conformance data. | `bool` | `false` | no |
-| <a name="input_dry_run"></a> [dry\_run](#input\_dry\_run) | Whether to run in dry-run mode (no actual updates) | `bool` | `true` | no |
 | <a name="input_lambda_log_level"></a> [lambda\_log\_level](#input\_lambda\_log\_level) | Lambda log level. Valid values [DEBUG,INFO,WARNING,ERROR]. | `string` | `"INFO"` | no |
 | <a name="input_recording_frequency"></a> [recording\_frequency](#input\_recording\_frequency) | AWS Config Recording Frequency. Valid options: DAILY or CONTINUOUS. | `string` | `"DAILY"` | no |
 | <a name="input_reliability_conformance_pack_name"></a> [reliability\_conformance\_pack\_name](#input\_reliability\_conformance\_pack\_name) | Name of the Reliability conformance pack | `string` | `"Well-Architected-Reliability"` | no |
 | <a name="input_scheduled_config_custom_lambda_periodic_trigger_interval"></a> [scheduled\_config\_custom\_lambda\_periodic\_trigger\_interval](#input\_scheduled\_config\_custom\_lambda\_periodic\_trigger\_interval) | AWS Config Custom Lambda Periodic Trigger Interval. Default value of Twelve\_Hours ensures updates within the DAILY window. | `string` | `"Twelve_Hours"` | no |
 | <a name="input_security_conformance_pack_name"></a> [security\_conformance\_pack\_name](#input\_security\_conformance\_pack\_name) | Name of the Security conformance pack | `string` | `"Well-Architected-Security"` | no |
-| <a name="input_wa_tool_updater_clean_notes"></a> [wa\_tool\_updater\_clean\_notes](#input\_wa\_tool\_updater\_clean\_notes) | Whether to clean all notes in the Well-Architected Tool workload before updating. | `bool` | `false` | no |
-| <a name="input_wa_tool_updater_dry_run"></a> [wa\_tool\_updater\_dry\_run](#input\_wa\_tool\_updater\_dry\_run) | Whether to run the Well-Architected Tool updater in dry-run mode (no actual updates). | `bool` | `true` | no |
-| <a name="input_wa_tool_workload_id"></a> [wa\_tool\_workload\_id](#input\_wa\_tool\_workload\_id) | ID of the Well-Architected Tool workload to update. | `string` | `""` | no |
-| <a name="input_workload_id"></a> [workload\_id](#input\_workload\_id) | ID of the Well-Architected Tool workload to update | `string` | `""` | no |
 
 ## Outputs
 

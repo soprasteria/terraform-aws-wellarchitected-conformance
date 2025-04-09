@@ -70,23 +70,6 @@ variable "deploy_wa_tool_updater" {
   default     = false
 }
 
-variable "wa_tool_workload_id" {
-  description = "ID of the Well-Architected Tool workload to update."
-  type        = string
-  default     = ""
-}
-
-variable "wa_tool_updater_dry_run" {
-  description = "Whether to run the Well-Architected Tool updater in dry-run mode (no actual updates)."
-  type        = bool
-  default     = true
-}
-variable "wa_tool_updater_clean_notes" {
-  description = "Whether to clean all notes in the Well-Architected Tool workload before updating."
-  type        = bool
-  default     = false
-}
-
 variable "security_conformance_pack_name" {
   description = "Name of the Security conformance pack"
   type        = string
@@ -103,22 +86,4 @@ variable "cost_optimization_conformance_pack_name" {
   description = "Name of the Cost Optimization conformance pack"
   type        = string
   default     = "Well-Architected-Cost-Optimization"
-}
-
-variable "workload_id" {
-  description = "ID of the Well-Architected Tool workload to update"
-  type        = string
-  default     = ""
-}
-
-variable "dry_run" {
-  description = "Whether to run in dry-run mode (no actual updates)"
-  type        = bool
-  default     = true
-}
-
-variable "clean_notes" {
-  description = "Whether to clean all notes in the Well-Architected Tool workload before updating"
-  type        = bool
-  default     = false
 }
