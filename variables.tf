@@ -16,19 +16,19 @@ variable "lambda_log_level" {
   default     = "INFO"
 }
 
-variable "config_custom_lambda_python_runtime" {
+variable "lambda_python_runtime" {
   description = "Runtime for AWS Config Custom Lambda."
   type        = string
   default     = "python3.12"
 }
 
-variable "config_custom_lambda_timeout" {
+variable "lambda_timeout" {
   description = "Timeout for AWS Config Custom Lambda in seconds."
   type        = number
   default     = 30
 }
 
-variable "config_custom_lambda_cloudwatch_logs_retention_in_days" {
+variable "lambda_cloudwatch_logs_retention_in_days" {
   description = "AWS Config Custom Lambda CloudWatch Logs retention in days."
   type        = number
   default     = 90
@@ -54,18 +54,6 @@ variable "deploy_cost_optimization_conformance_pack" {
 
 variable "deploy_iam_conformance_pack" {
   description = "Deploy AWS Config Conformance Pack for IAM."
-  type        = bool
-  default     = true
-}
-
-variable "deploy_operational_excellence_conformance_pack" {
-  description = "Deploy AWS Config Conformance Pack for Operational Excellence."
-  type        = bool
-  default     = true
-}
-
-variable "deploy_wa_tool_updater" {
-  description = "Deploy Lambda function to update Well-Architected Tool with conformance data."
   type        = bool
   default     = false
 }

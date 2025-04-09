@@ -4,12 +4,12 @@ module "lambda_function_wa_tool_updater" {
   function_name                     = "well_architected_tool_updater"
   description                       = "Updates Well-Architected Tool instances with AWS Config Conformance Pack compliance data"
   handler                           = "main.lambda_handler"
-  runtime                           = var.config_custom_lambda_python_runtime
+  runtime                           = var.lambda_python_runtime
   source_path                       = "${path.module}/src/wa_tool_updater"
   attach_policy_statements          = true
-  timeout                           = var.config_custom_lambda_timeout
+  timeout                           = var.lambda_timeout
   memory_size                       = 256
-  cloudwatch_logs_retention_in_days = var.config_custom_lambda_cloudwatch_logs_retention_in_days
+  cloudwatch_logs_retention_in_days = var.lambda_cloudwatch_logs_retention_in_days
 
   environment_variables = {
     LOG_LEVEL                          = var.lambda_log_level

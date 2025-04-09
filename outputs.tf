@@ -13,7 +13,3 @@ output "well_architected_conformance_pack_cost_optimization_arn" {
 output "well_architected_conformance_pack_iam_arn" {
   value = var.deploy_iam_conformance_pack ? aws_config_conformance_pack.well_architected_conformance_pack_iam[0].arn : null
 }
-
-output "well_architected_conformance_pack_security_template_arn" {
-  value = aws_s3_object.cloudformation_wa_config_security_template.id
-}

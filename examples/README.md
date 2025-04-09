@@ -10,7 +10,7 @@ provider "aws" {
 }
 
 module "well_architected_conformance" {
-  source = "../../"
+  source = "git::https://github.com/soprasteria/terraform-aws-wellarchitected-conformance.git?ref=<your-desired-git-sha-or-tag>"
 
   # AWS Config recording configuration
   recording_frequency = "DAILY"  # Use DAILY to reduce costs
@@ -19,7 +19,7 @@ module "well_architected_conformance" {
   deploy_security_conformance_pack          = true
   deploy_reliability_conformance_pack       = true
   deploy_cost_optimization_conformance_pack = true
-  deploy_iam_conformance_pack               = true
+  deploy_iam_conformance_pack               = false
 }
 ```
 
