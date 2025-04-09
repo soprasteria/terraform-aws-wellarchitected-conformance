@@ -20,12 +20,6 @@ module "well_architected_conformance" {
   deploy_reliability_conformance_pack       = true
   deploy_cost_optimization_conformance_pack = true
   deploy_iam_conformance_pack               = true
-  deploy_operational_excellence_conformance_pack = false  # Not implemented yet
-
-  # Well-Architected Tool Updater configuration
-  deploy_wa_tool_updater = true
-  wa_tool_workload_id    = "your-workload-id"  # Replace with your actual workload ID
-  wa_tool_updater_dry_run = false  # Set to true for testing
 }
 ```
 
@@ -34,16 +28,13 @@ module "well_architected_conformance" {
 Before deploying this example, you need:
 
 1. An AWS account with appropriate permissions
-2. A Well-Architected Tool workload already created
-3. The workload ID from the Well-Architected Tool
 
 ## Features
 
 This example deploys:
 
 1. AWS Config Conformance Packs for Security, Reliability, Cost Optimization, and IAM
-2. A Lambda function that updates your Well-Architected Tool workload with compliance data
-3. A scheduled CloudWatch Events rule that triggers the Lambda function daily
+2. A Lambda function that updates a specified Well-Architected Tool workload with compliance data
 
 ## Notes
 
