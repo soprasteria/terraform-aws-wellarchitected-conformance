@@ -44,6 +44,9 @@ The Lambda function will:
 
 The source code for the Lambda function is located in the [src/wa_tool_updater](src/wa_tool_updater) directory.
 
+### Notice about compliance checks and automation
+Check data is based on all resources in the current AWS account. Tagging based filtering is currently not supported. Be aware if you have multiple workloads in the same AWS account.
+
 
 # Getting started
 1. At least two days before your planned review, deploy the module as suggested in [examples/main.tf](examples/main.tf). Compliance checks will update on a daily basis, to reduce unncessary costs for AWS Config Evaluations.
