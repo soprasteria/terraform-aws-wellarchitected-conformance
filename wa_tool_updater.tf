@@ -13,6 +13,7 @@ module "lambda_function_wa_tool_updater" {
 
   environment_variables = {
     LOG_LEVEL                          = var.lambda_log_level
+    TIMEZONE                           = var.lambda_timezone
     SECURITY_CONFORMANCE_PACK          = var.security_conformance_pack_name
     RELIABILITY_CONFORMANCE_PACK       = var.reliability_conformance_pack_name
     COST_OPTIMIZATION_CONFORMANCE_PACK = var.cost_optimization_conformance_pack_name

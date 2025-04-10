@@ -16,6 +16,12 @@ variable "lambda_log_level" {
   default     = "INFO"
 }
 
+variable "lambda_timezone" {
+  description = "Timezone for Lambda functions. Uses pytz timezone names. Default is Europe/Paris (Central European Time)."
+  type        = string
+  default     = "Europe/Paris"
+}
+
 variable "lambda_python_runtime" {
   description = "Runtime for AWS Config Custom Lambda."
   type        = string

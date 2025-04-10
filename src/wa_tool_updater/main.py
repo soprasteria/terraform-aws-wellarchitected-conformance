@@ -2,6 +2,7 @@ import boto3
 import json
 import logging
 import os
+import pytz
 from datetime import datetime
 from botocore.exceptions import ClientError
 from collections import defaultdict
@@ -35,6 +36,16 @@ logger.setLevel(getattr(logging, log_level))
 # Initialize clients
 config_client = boto3.client('config')
 wellarchitected_client = boto3.client('wellarchitected')
+
+# Configure timezone
+DEFAULT_TIMEZONE = 'Europe/Paris'  # Central European Time (Paris)
+timezone_name = os.environ.get('TIMEZONE', DEFAULT_TIMEZONE)
+try:
+    timezone = pytz.timezone(timezone_name)
+    logger.info(f"Using timezone: {timezone_name}")
+except pytz.exceptions.UnknownTimeZoneError:
+    logger.warning(f"Unknown timezone: {timezone_name}. Falling back to {DEFAULT_TIMEZONE}")
+    timezone = pytz.timezone(DEFAULT_TIMEZONE)
 
 # Get conformance pack names from environment variables
 SECURITY_CONFORMANCE_PACK = os.environ.get('SECURITY_CONFORMANCE_PACK', 'Well-Architected-Security')
@@ -274,8 +285,9 @@ def update_wellarchitected_notes(workload_id, lens_alias, question_id, consolida
         # Get current notes
         current_notes = response.get('Answer', {}).get('Notes', '')
 
-        # Get timestamp for the report
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Get timestamp for the report with timezone
+        current_time = datetime.now(timezone)
+        timestamp = current_time.strftime("%Y-%m-%d %H:%M:%S %Z")
 
         # Define minimal markers for our automated updates - include timestamp in the start marker
         start_marker = f"<!-- WA-{timestamp} -->"
@@ -542,7 +554,8 @@ def process_conformance_pack(conformance_pack_name, workload_id, dry_run=True):
             current_notes = response.get('Answer', {}).get('Notes', '')
 
             # Calculate the total length with detailed notes
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            current_time = datetime.now(timezone)
+            timestamp = current_time.strftime("%Y-%m-%d %H:%M:%S %Z")
             start_marker = f"<!-- WA-{timestamp} -->"
             end_marker = "<!-- /WA -->"
 
