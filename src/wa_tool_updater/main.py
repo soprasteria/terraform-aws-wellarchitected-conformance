@@ -141,7 +141,7 @@ def generate_summarized_notes_for_rule(rule_data):
     for resource_type, counts in resource_counts.items():
         if counts['COMPLIANT'] > 0:
             resource_text = "resource" if counts['COMPLIANT'] == 1 else "resources"
-            compliant_types.append(f"- {resource_type}: {counts['NON_COMPLIANT']} {resource_text}")
+            compliant_types.append(f"- {resource_type}: {counts['COMPLIANT']} {resource_text}")
 
     if compliant_types:
         notes.append("[+] Compliant:\n")
