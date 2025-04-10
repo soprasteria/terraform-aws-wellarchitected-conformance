@@ -1,0 +1,67 @@
+Resources:
+  COST01BP05AWSBudgets:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: cost01-cloud-financial-management_bp_aws-budgets
+      Source:
+        Owner: CUSTOM_LAMBDA
+        SourceIdentifier: ${lambda_function_wa_conformance_cost_aws_budgets_arn}
+        SourceDetails:
+          - EventSource: "aws.config"
+            MessageType: "ScheduledNotification"
+            MaximumExecutionFrequency: ${maximum_execution_frequency}
+  COST02BP03ImplementAnAccountStructure:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: cost02-govern-usage_bp_implement-an-account-structure
+      Source:
+        Owner: CUSTOM_LAMBDA
+        SourceIdentifier: ${lambda_function_wa_conformance_cost_account_structure_implemented_arn}
+        SourceDetails:
+          - EventSource: "aws.config"
+            MessageType: "ScheduledNotification"
+            MaximumExecutionFrequency: ${maximum_execution_frequency}
+  COST03BP02AddOrganizationInformationToCostAndUsageWithTags:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: cost03-monitor-usage_bp_organization-information-to-cost-and-usage-with-tags
+      Source:
+        Owner: CUSTOM_LAMBDA
+        SourceIdentifier: ${lambda_function_wa_conformance_cost_add_organization_information_to_cost_and_usage}
+        SourceDetails:
+          - EventSource: "aws.config"
+            MessageType: "ScheduledNotification"
+            MaximumExecutionFrequency: ${maximum_execution_frequency}
+  COST03BP05AWSCostAnomalyDetection:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: cost03-monitor-usage_bp_aws-cost-anomaly-detection
+      Source:
+        Owner: CUSTOM_LAMBDA
+        SourceIdentifier: ${lambda_function_wa_conformance_cost_aws_cost_anomaly_detection_arn}
+        SourceDetails:
+          - EventSource: "aws.config"
+            MessageType: "ScheduledNotification"
+            MaximumExecutionFrequency: ${maximum_execution_frequency}
+  COST03BP05AWSBudgets:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: cost03-monitor-usage_bp_aws-budgets
+      Source:
+        Owner: CUSTOM_LAMBDA
+        SourceIdentifier: ${lambda_function_wa_conformance_cost_aws_budgets_arn}
+        SourceDetails:
+          - EventSource: "aws.config"
+            MessageType: "ScheduledNotification"
+            MaximumExecutionFrequency: ${maximum_execution_frequency}
+  COST04BP04DecommissionResourcesAutomatically:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: cost03-decomissioning-resources_bp_decommission-resources-automatically
+      Source:
+        Owner: CUSTOM_LAMBDA
+        SourceIdentifier: ${lambda_function_wa_conformance_ec2_instances_without_auto_scaling}
+        SourceDetails:
+          - EventSource: "aws.config"
+            MessageType: "ScheduledNotification"
+            MaximumExecutionFrequency: ${maximum_execution_frequency}
