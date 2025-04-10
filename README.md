@@ -1,8 +1,8 @@
 # terraform-aws-wellarchitected-conformance
 
-# TLDR
+# TL;DR
 This Terraform module deploys AWS Config Conformance Packs mapped to pillars in the Well-Architected Framework.
-A Lambda function can populate the Notes field in the Well-Architected Tool with AWS Config resource compliance check information.
+A Lambda function can populate the Notes field in the Well-Architected Tool with AWS Config resource compliance check results.
 
 # About
 Are you Well-Architected? How do you measure it, specifically?
