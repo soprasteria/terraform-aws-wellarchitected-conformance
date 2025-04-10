@@ -22,8 +22,8 @@ The Lambda function can be triggered manually or on a schedule. It expects the f
 ```json
 {
   "workload_id": "your-workload-id",
-  "dry_run": false,
-  "clean_notes": false
+  "dry_run": 0,
+  "clean_notes": 0
 }
 ```
 

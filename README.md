@@ -92,6 +92,24 @@ You can also view the compliance status for each check, prefixed with the relate
 
 ![Conformance Pack Rules](./gfx/screenshot-03.png)
 
+To trigger the Well-Architected Tool updater, go to Well-Architected Tool and extract the Workload ID (not the full resource ARN).
+
+![Well-Architected Tool Workload ID](./gfx/screenshot-04.png)
+
+Then go to AWS Lambda and find the function well_architected_tool_updater. Create test event JSON definition as follows (Console or CLI):
+
+![Well-Architected Tool Updater test event configuration](./gfx/screenshot-05.png)
+
+Expected output is as follows. Full log output is available in Cloudwatch Logs.
+
+![Well-Architected Tool Updater execution result](./gfx/screenshot-06.png)
+
+Back in Well-Architected Tool, the notes field will be updated with detected compliance for SEC 4. How do you detect and investigate security events?
+
+![SEC4 questions ](./gfx/screenshot-07.png)
+
+![SEC4 notes ](./gfx/screenshot-08.png)
+
 
 ## Cost of AWS Config evaluations
 According to the [AWS Config pricing page](https://aws.amazon.com/config/pricing/); With AWS Config, you are charged based on the number of configuration items recorded, the number of active AWS Config rule evaluations, and the number of conformance pack evaluations in your account. A configuration item is a record of the configuration state of a resource in your AWS account. An AWS Config rule evaluation is a compliance state evaluation of a resource by an AWS Config rule in your AWS account. A conformance pack evaluation is the evaluation of a resource by an AWS Config rule within the conformance pack.
