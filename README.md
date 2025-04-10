@@ -1,5 +1,9 @@
 # terraform-aws-wellarchitected-conformance
 
+# TLDR
+This Terraform module deploys AWS Config Conformance Packs mapped to pillars in the Well-Architected Framework.
+A Lambda function can populate the Notes field in the Well-Architected Tool with AWS Config resource compliance check information.
+
 # About
 Are you Well-Architected? How do you measure it, specifically?
 
@@ -13,7 +17,7 @@ Best practices in Operational Excellence are not straight forward to detect, as 
 The main outcome of this module is to accelerate the Well-Architected Framework Review conversation, not to replace it with automation. Our hope is to shift the focus from  "how did we configure this?" to "this is where we are today, what could we do to improve?", thus freeing up valuable time for busy teams.
 
 ## Use-case
-If you can relate to some of this situations, this tool may be useful for you:
+If you can relate to some of these situations, this tool may be useful for you:
  - [AWS Security Hub](https://aws.amazon.com/security-hub/) with [AWS Foundational Security Best Practices](https://docs.aws.amazon.com/securityhub/latest/userguide/fsbp-standard.html) and/or [CIS AWS Foundations Benchmark](https://docs.aws.amazon.com/securityhub/latest/userguide/cis-aws-foundations-benchmark.html) are not available.
  - AWS Trusted Advisor checks based on AWS Business or Enterprise Support are not available.
  - 3rd party tools such as [Prowler](https://prowler.com/) and [Steampipe](https://steampipe.io/) are not approved by your company's security team.
