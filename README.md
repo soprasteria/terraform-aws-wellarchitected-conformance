@@ -4,6 +4,11 @@
 This Terraform module deploys AWS Config Conformance Packs mapped to pillars in the Well-Architected Framework.
 A Lambda function can populate the Notes field in the Well-Architected Tool with AWS Config resource compliance check results.
 
+![Sequence flow](./gfx/flow.jpg)
+
+![Architecture diagram](./gfx/architecture-diagram.jpg)
+
+
 # About
 Are you Well-Architected? How do you measure it, specifically?
 
@@ -26,15 +31,17 @@ If you can relate to some of these situations, this tool may be useful for you:
  The full list of provisioned resources can be found further down in this README.
 
 ## AWS Config Conformance Pack mapping to Well-Architected Framework Pillar
- - Checks for Operational Excellence Pillar are currently not available.
- - Relevant checks for the Security Pillar are covered in conformance pack Well-Architected-Security.
- - Relevant checks for the Reliability Pillar are covered in conformance pack Well-Architected-Reliability.
- - Checks for Performance Efficiency are currently not available.
- - Relevant checks for the Cost Optimization Pillare are covered in conformance pack Well-Architected-Cost-Optimization.
- - Relevant checks for the Sustainability Pillare are currently not available.
+### Available
+ - Security Pillar: 128 checks
+ - Reliability Pillar: 69 checks
+ - Cost Optimization Pillar: 6 checks
 
- Conformance pack Well-Architected-IAM is also available, as a subset of Security, for insight into that topic. Do note that no automation is supported for the IAM pack, as it is covered in the Security pack.
+### Not yet available
+ - Operational Excellence Pillar
+ - Performance Efficiency Pillar
+ - Sustainability Pillar
 
+Conformance pack Well-Architected-IAM is also available, as a subset of Security, for insight into that specific area. Do note that no automation is supported for the IAM pack, as it is covered in the Security pack.
 
 ## Well-Architected Tool Integration
 This module can also automatically update your Well-Architected Tool workload with compliance data from the AWS Config Conformance Packs.
