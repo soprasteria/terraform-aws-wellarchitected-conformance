@@ -31,29 +31,36 @@ def check_budget_compliance(budgets, event):
 
         logger.info(f"Found {len(response['Budgets'])} budgets")
 
-        # For each budget, check if it has actions with email notifications
+        # For each budget, check if it has notifications with email subscribers
         has_email_notification = False
 
         for budget in response['Budgets']:
             budget_name = budget['BudgetName']
-            logger.info(f"Checking actions for budget: {budget_name}")
+            logger.info(f"Checking notifications for budget: {budget_name}")
 
-            # Get actions for this budget
-            actions = budgets.describe_budget_actions(
+            # Get notifications for this budget
+            notifications = budgets.describe_notifications_for_budget(
                 AccountId=account_id,
                 BudgetName=budget_name
             )
 
-            # Check each action for email subscribers
-            action_count = len(actions.get('Actions', []))
-            logger.info(f"Found {action_count} actions for budget: {budget_name}")
+            notification_count = len(notifications.get('Notifications', []))
+            logger.info(f"Found {notification_count} notifications for budget: {budget_name}")
 
-            for action in actions.get('Actions', []):
-                subscribers = action.get('Subscribers', [])
-                if any(sub['Type'] == 'EMAIL' for sub in subscribers):
-                    logger.info(f"Found email notification in budget: {budget_name}")
-                    has_email_notification = True
-                    break
+            if notification_count > 0:
+                # Check subscribers for each notification
+                for notification in notifications['Notifications']:
+                    subscribers = budgets.describe_subscribers_for_notification(
+                        AccountId=account_id,
+                        BudgetName=budget_name,
+                        Notification=notification
+                    )
+
+                    if any(sub['SubscriptionType'] == 'EMAIL'
+                          for sub in subscribers.get('Subscribers', [])):
+                        logger.info(f"Found email notification in budget: {budget_name}")
+                        has_email_notification = True
+                        break
 
             if has_email_notification:
                 break
@@ -65,6 +72,7 @@ def check_budget_compliance(budgets, event):
     except Exception as e:
         logger.error(f"Error in check_budget_compliance: {str(e)}", exc_info=True)
         raise
+
 
 def lambda_handler(event, context):
     """AWS Lambda handler function."""
