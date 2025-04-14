@@ -6,6 +6,13 @@ from datetime import datetime
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+
+# Initialize AWS clients
+logger.info("Initializing AWS clients")
+config = boto3.client('config')
+budgets = boto3.client('budgets')
+organizations = boto3.client('organizations')
+
 # Create a formatter
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
@@ -54,13 +61,6 @@ try:
     def lambda_handler(event, context):
         try:
             logger.info("Starting Lambda handler execution")
-
-            # Initialize AWS clients
-            logger.info("Initializing AWS clients")
-            config = boto3.client('config')
-            budgets = boto3.client('budgets')
-            organizations = boto3.client('organizations')
-
             compliance_type = check_compliance(budgets, organizations, event)
 
             # Create evaluation result

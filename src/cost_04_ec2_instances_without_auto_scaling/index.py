@@ -7,6 +7,10 @@ from typing import List, Dict, Any
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+# Initialize AWS clients at module level (outside of handler)
+ec2_client = boto3.client('ec2')
+config_client = boto3.client('config')
+
 # Create a formatter
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
@@ -18,7 +22,6 @@ if not logger.handlers:
 
 def get_all_regions() -> List[str]:
     """Get a list of all enabled AWS regions."""
-    ec2_client = boto3.client('ec2')
     regions = [
         region['RegionName']
         for region in ec2_client.describe_regions(
@@ -96,7 +99,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """AWS Lambda handler function."""
     try:
         logger.info("Starting Lambda handler")
-        config = boto3.client('config')
         compliance_type = check_compliance(event)
 
         evaluation = {
@@ -106,7 +108,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'OrderingTimestamp': datetime.now()
         }
 
-        config.put_evaluations(
+        config_client.put_evaluations(
             Evaluations=[evaluation],
             ResultToken=event['resultToken']
         )
