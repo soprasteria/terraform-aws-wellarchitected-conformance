@@ -5,7 +5,7 @@ variable "recording_frequency" {
 }
 
 variable "scheduled_config_custom_lambda_periodic_trigger_interval" {
-  description = "AWS Config Custom Lambda Periodic Trigger Interval. Default value of Twelve_Hours ensures updates within the DAILY window."
+  description = "AWS Config Custom Lambda Periodic Trigger Interval. Default value of Twelve_Hours ensures updates within the DAILY window. Valid Values: One_Hour | Three_Hours | Six_Hours | Twelve_Hours | TwentyFour_Hours"
   type        = string
   default     = "Twelve_Hours"
 }

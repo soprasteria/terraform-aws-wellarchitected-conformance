@@ -9,11 +9,10 @@ logger.setLevel(logging.INFO)
 # Create a formatter
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
-# Add handler if running locally (Lambda automatically adds a handler)
-if not logger.handlers:
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+# Initialize AWS Config and Budgets clients
+logger.info("Initializing AWS clients")
+config = boto3.client('config')
+budgets = boto3.client('budgets')
 
 def check_budget_compliance(budgets, event):
     """Check if budgets exist and have email notifications configured."""
@@ -79,10 +78,6 @@ def lambda_handler(event, context):
     logger.info("Starting Lambda handler execution")
 
     try:
-        # Initialize AWS Config and Budgets clients
-        logger.info("Initializing AWS clients")
-        config = boto3.client('config')
-        budgets = boto3.client('budgets')
 
         evaluations = []
 
