@@ -22,12 +22,13 @@ module "lambda_function_wa_conformance_cost_02_account_structure_implemented" {
   }
 
   tags = {
-    Name = "Well-Architected-Conformance-COST02-BP03-Implement-an-account-structure"
+    Name    = "Well-Architected-Conformance-COST02-BP03-Implement-an-account-structure",
+    Service = local.tag_service
   }
 }
 
 # COST03
-
+# AWS Lambda function based on module from terraform-aws-modules
 module "lambda_function_wa_conformance_cost_03_aws_budgets" {
   source                            = "git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git?ref=f7866811bc1429ce224bf6a35448cb44aa5155e7"
   trigger_on_package_timestamp      = false
@@ -52,10 +53,12 @@ module "lambda_function_wa_conformance_cost_03_aws_budgets" {
   }
 
   tags = {
-    Name = "Well-Architected-Conformance-COST03-BP05-AWS-Budgets"
+    Name    = "Well-Architected-Conformance-COST03-BP05-AWS-Budgets",
+    Service = local.tag_service
   }
 }
 
+# AWS Lambda function based on module from terraform-aws-modules
 module "lambda_function_wa_conformance_cost_03_aws_cost_anomaly_detection" {
   source                            = "git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git?ref=f7866811bc1429ce224bf6a35448cb44aa5155e7"
   trigger_on_package_timestamp      = false
@@ -83,6 +86,7 @@ module "lambda_function_wa_conformance_cost_03_aws_cost_anomaly_detection" {
   }
 }
 
+# AWS Lambda function based on module from terraform-aws-modules
 module "lambda_function_wa_conformance_cost_03_add_organization_information_to_cost_and_usage" {
   source                            = "git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git?ref=f7866811bc1429ce224bf6a35448cb44aa5155e7"
   trigger_on_package_timestamp      = false
@@ -108,10 +112,12 @@ module "lambda_function_wa_conformance_cost_03_add_organization_information_to_c
   }
 
   tags = {
-    Name = "Well-Architected-Conformance-COST03-BP05-AWS-Cost-Anomaly-Detection"
+    Name    = "Well-Architected-Conformance-COST03-BP05-AWS-Cost-Anomaly-Detection",
+    Service = local.tag_service
   }
 }
 
+# AWS Lambda function based on module from terraform-aws-modules
 module "lambda_function_wa_conformance_cost_04_ec2_instances_without_auto_scaling" {
   source                            = "git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git?ref=f7866811bc1429ce224bf6a35448cb44aa5155e7"
   trigger_on_package_timestamp      = false
@@ -138,7 +144,8 @@ module "lambda_function_wa_conformance_cost_04_ec2_instances_without_auto_scalin
   }
 
   tags = {
-    Name = "Well-Architected-Conformance-COST04-BP04-Decommision-Resources_Automatically"
+    Name    = "Well-Architected-Conformance-COST04-BP04-Decommision-Resources_Automatically",
+    Service = local.tag_service
   }
 }
 
