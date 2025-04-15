@@ -4,6 +4,12 @@ variable "recording_frequency" {
   default     = "DAILY"
 }
 
+variable "aws_config_retention_period_in_days" {
+  description = "Number of days AWS Config stores your historical information."
+  type        = number
+  default     = 180
+}
+
 variable "scheduled_config_custom_lambda_periodic_trigger_interval" {
   description = "AWS Config Custom Lambda Periodic Trigger Interval. Default value of Twelve_Hours ensures updates within the DAILY window. Valid Values: One_Hour | Three_Hours | Six_Hours | Twelve_Hours | TwentyFour_Hours"
   type        = string
