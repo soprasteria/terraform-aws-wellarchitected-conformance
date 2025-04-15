@@ -1,3 +1,4 @@
+# AWS Config Delivery Channel to S3
 resource "aws_config_delivery_channel" "well_architected" {
   name           = "well_architected_config_delivery_channel"
   s3_bucket_name = module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_id
@@ -50,6 +51,7 @@ module "aws_config_well_architected_recorder_s3_bucket" {
   }
 }
 
+# AWS Config Configuration Recorder with recording_frequency set by input variable
 resource "aws_config_configuration_recorder" "well_architected" {
   name     = "well-architected"
   role_arn = aws_iam_role.config_role.arn
@@ -64,10 +66,12 @@ resource "aws_config_configuration_recorder" "well_architected" {
   }
 }
 
+# AWS Config retention configuration: Number of days AWS Config stores your historical information.
 resource "aws_config_retention_configuration" "example" {
   retention_period_in_days = 400
 }
 
+# Manages status (recording / stopped) of an AWS Config Configuration Recorder.
 resource "aws_config_configuration_recorder_status" "well_architected" {
   name       = aws_config_configuration_recorder.well_architected.name
   is_enabled = true
@@ -165,6 +169,7 @@ resource "aws_s3_object" "cloudformation_wa_config_cost_optimization_template" {
   content_type = "application/yaml"
 }
 
+# Takes the source Cloudformation file from S3, generates an AWS Config Conformance pack which behind the scenes creates an AWS managed Cloudformation stack.
 resource "aws_config_conformance_pack" "well_architected_conformance_pack_security" {
   count           = var.deploy_security_conformance_pack ? 1 : 0
   name            = "Well-Architected-Security"

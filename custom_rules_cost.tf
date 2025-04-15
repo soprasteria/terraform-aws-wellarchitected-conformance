@@ -27,7 +27,7 @@ module "lambda_function_wa_conformance_cost_02_account_structure_implemented" {
 }
 
 # COST03
-
+# AWS Lambda function based on module from terraform-aws-modules
 module "lambda_function_wa_conformance_cost_03_aws_budgets" {
   source                            = "git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git?ref=f7866811bc1429ce224bf6a35448cb44aa5155e7"
   trigger_on_package_timestamp      = false
@@ -56,6 +56,7 @@ module "lambda_function_wa_conformance_cost_03_aws_budgets" {
   }
 }
 
+# AWS Lambda function based on module from terraform-aws-modules
 module "lambda_function_wa_conformance_cost_03_aws_cost_anomaly_detection" {
   source                            = "git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git?ref=f7866811bc1429ce224bf6a35448cb44aa5155e7"
   trigger_on_package_timestamp      = false
@@ -83,6 +84,7 @@ module "lambda_function_wa_conformance_cost_03_aws_cost_anomaly_detection" {
   }
 }
 
+# AWS Lambda function based on module from terraform-aws-modules
 module "lambda_function_wa_conformance_cost_03_add_organization_information_to_cost_and_usage" {
   source                            = "git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git?ref=f7866811bc1429ce224bf6a35448cb44aa5155e7"
   trigger_on_package_timestamp      = false
@@ -112,6 +114,7 @@ module "lambda_function_wa_conformance_cost_03_add_organization_information_to_c
   }
 }
 
+# AWS Lambda function based on module from terraform-aws-modules
 module "lambda_function_wa_conformance_cost_04_ec2_instances_without_auto_scaling" {
   source                            = "git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git?ref=f7866811bc1429ce224bf6a35448cb44aa5155e7"
   trigger_on_package_timestamp      = false
