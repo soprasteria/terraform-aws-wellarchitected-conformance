@@ -49,6 +49,10 @@ module "aws_config_well_architected_recorder_s3_bucket" {
       }
     }
   }
+  tags = {
+    Name    = "Well-Architected-Config-Recorder-Bucket",
+    Service = local.tag_service
+  }
 }
 
 # AWS Config Configuration Recorder with recording_frequency set by input variable

@@ -22,7 +22,8 @@ module "lambda_function_wa_conformance_cost_02_account_structure_implemented" {
   }
 
   tags = {
-    Name = "Well-Architected-Conformance-COST02-BP03-Implement-an-account-structure"
+    Name    = "Well-Architected-Conformance-COST02-BP03-Implement-an-account-structure",
+    Service = local.tag_service
   }
 }
 
@@ -52,7 +53,8 @@ module "lambda_function_wa_conformance_cost_03_aws_budgets" {
   }
 
   tags = {
-    Name = "Well-Architected-Conformance-COST03-BP05-AWS-Budgets"
+    Name    = "Well-Architected-Conformance-COST03-BP05-AWS-Budgets",
+    Service = local.tag_service
   }
 }
 
@@ -110,7 +112,8 @@ module "lambda_function_wa_conformance_cost_03_add_organization_information_to_c
   }
 
   tags = {
-    Name = "Well-Architected-Conformance-COST03-BP05-AWS-Cost-Anomaly-Detection"
+    Name    = "Well-Architected-Conformance-COST03-BP05-AWS-Cost-Anomaly-Detection",
+    Service = local.tag_service
   }
 }
 
@@ -141,7 +144,8 @@ module "lambda_function_wa_conformance_cost_04_ec2_instances_without_auto_scalin
   }
 
   tags = {
-    Name = "Well-Architected-Conformance-COST04-BP04-Decommision-Resources_Automatically"
+    Name    = "Well-Architected-Conformance-COST04-BP04-Decommision-Resources_Automatically",
+    Service = local.tag_service
   }
 }
 
