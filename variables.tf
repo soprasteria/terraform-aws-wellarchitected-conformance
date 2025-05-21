@@ -87,3 +87,15 @@ variable "cost_optimization_conformance_pack_name" {
   type        = string
   default     = "Well-Architected-Cost-Optimization"
 }
+
+variable "reports_bucket_name_prefix" {
+  description = "Prefix for the S3 bucket name that stores Well-Architected compliance reports"
+  type        = string
+  default     = "well-architected-compliance-reports"
+}
+
+variable "reports_retention_days" {
+  description = "Number of days to retain non-current versions of reports in the S3 bucket"
+  type        = number
+  default     = 90
+}

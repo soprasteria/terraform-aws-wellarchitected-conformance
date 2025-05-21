@@ -2,14 +2,14 @@
 Well-Architected Report Generator Lambda Function
 
 This Lambda function generates an HTML report from AWS Config Conformance Packs
-compliance data and uploads it to an S3 bucket.
+compliance data and uploads it to a dedicated S3 bucket.
 
 Environment Variables:
     LOG_LEVEL: Logging level (default: INFO)
     SECURITY_CONFORMANCE_PACK: Name of the Security conformance pack
     RELIABILITY_CONFORMANCE_PACK: Name of the Reliability conformance pack
     COST_OPTIMIZATION_CONFORMANCE_PACK: Name of the Cost Optimization conformance pack
-    S3_BUCKET_NAME: Name of the S3 bucket to store HTML reports
+    S3_BUCKET_NAME: Name of the dedicated S3 bucket to store HTML reports
     TIMEZONE: Timezone for date/time formatting (default: Europe/Paris)
 
 Event Parameters:
