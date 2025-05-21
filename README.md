@@ -3,6 +3,7 @@
 # TL;DR
 This Terraform module deploys AWS Config Conformance Packs mapped to pillars in the Well-Architected Framework.
 A Lambda function can populate the Notes field in the Well-Architected Tool with AWS Config resource compliance check results.
+Another Lambda function can generate HTML reports of compliance data and store them in an S3 bucket.
 
 ![Sequence flow](./gfx/flow.jpg)
 
