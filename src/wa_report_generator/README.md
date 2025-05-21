@@ -1,6 +1,6 @@
 # Well-Architected Report Generator
 
-This Lambda function generates an HTML report from AWS Config Conformance Packs compliance data and uploads it to an S3 bucket.
+This Lambda function generates an HTML report from AWS Config Conformance Packs compliance data and uploads it to the S3 bucket provisioned for the AWS Config recorder.
 
 ## Functionality
 
