@@ -19,7 +19,7 @@ The Lambda function:
 
 ## Usage
 
-The Lambda function can be triggered manually or on a schedule. It expects the following event parameters:
+The Lambda function should be invoked manually through the AWS Console or CLI. It expects the following event parameters:
 
 ```json
 {
@@ -30,6 +30,28 @@ The Lambda function can be triggered manually or on a schedule. It expects the f
 
 - `workload_id`: ID of the Well-Architected Tool workload (used to retrieve question titles)
 - `dry_run`: Whether to run in dry-run mode (no actual uploads)
+
+### AWS CLI Example
+
+```bash
+aws lambda invoke \
+  --function-name well_architected_report_generator \
+  --payload '{"workload_id":"your-workload-id","dry_run":0}' \
+  response.json
+```
+
+### AWS Console Example
+
+1. Navigate to the Lambda function in the AWS Console
+2. Select the "Test" tab
+3. Create a new test event with the following JSON:
+   ```json
+   {
+     "workload_id": "your-workload-id",
+     "dry_run": 0
+   }
+   ```
+4. Click "Test" to invoke the function
 
 ## Environment Variables
 

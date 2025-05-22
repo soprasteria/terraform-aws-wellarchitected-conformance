@@ -45,7 +45,10 @@ If you can relate to some of these situations, this tool may be useful for you:
 Conformance pack Well-Architected-IAM is also available, as a subset of Security, for insight into that specific area. Do note that no automation is supported for the IAM pack, as it is covered in the Security pack.
 
 ## Well-Architected Tool Integration
-This module can also automatically update your Well-Architected Tool workload with compliance data from the AWS Config Conformance Packs.
+This module provides two Lambda functions for integrating with the Well-Architected Tool:
+
+### 1. Well-Architected Tool Updater
+This Lambda function updates your Well-Architected Tool workload with compliance data from the AWS Config Conformance Packs.
 
 The Lambda function will:
 1. Process each conformance pack (Security, Reliability, Cost Optimization).
@@ -56,16 +59,29 @@ The Lambda function will:
 
 The source code for the Lambda function is located in the [src/wa_tool_updater](src/wa_tool_updater) directory.
 
+### 2. Well-Architected Report Generator
+This Lambda function generates HTML reports from AWS Config compliance data and stores them in a dedicated S3 bucket.
+
+The Lambda function will:
+1. Process each conformance pack (Security, Reliability, Cost Optimization).
+2. Retrieve question titles from the Well-Architected Tool API for more descriptive reports.
+3. Collect compliance data for all rules (SEC01, SEC02, REL01, COST01, etc.).
+4. Generate an HTML report with compliance scores, resource details, and visual progress bars.
+5. Upload the report to a dedicated S3 bucket in the "Reports" folder.
+
+The source code for the Lambda function is located in the [src/wa_report_generator](src/wa_report_generator) directory.
+
 ### Notice about compliance checks and automation
 Check data is based on all resources in the current AWS account. Tagging based filtering is currently not supported. Be aware if you have multiple workloads in the same AWS account.
 
 
 # Getting started
 1. At least two days before your planned review, deploy the module as suggested in [examples/main.tf](examples/main.tf). Compliance checks will update on a daily basis, to reduce unncessary costs for AWS Config Evaluations.
-1. Right before the review, trigger the Lambda function well_architected_tool_updater to update the Well-Architected Tool workload notes sections based on AWS Config Conformance packs compliance status.
-1. Run the review, look to the data in the notes field for discussion. No checked/answered questions will be modified, that would be up to subjective evaluation.
+1. Right before the review, trigger the Lambda functions manually through the AWS Console or CLI:
 
-### Event JSON for Lambda function well_architected_tool_updater in dry_run mode
+## Invoking the Lambda Functions
+
+### Well-Architected Tool Updater
 Extract the Well-Architected Tool Workload ID from Properties - ARN.
 This example with dry_run set to 1 will find relevant compliance data and log to CloudWatch Logs. No changes or updates will be performed.
 ```json
@@ -83,8 +99,8 @@ Flipping dry_run to 0 will perform updates of the notes field. No checked/answer
   "clean_notes": 0
 }
 ```
-### Event JSON for Lambda function well_architected_tool_updater to clean the notes field for all questions
-If you end up with a lot of mess and would like a fresh start, setting clean_notes to 1 will clean the notes field for all questions and return. No further changes to checked/answered questions or compliance data updates will be performed.
+
+To clean the notes field for all questions, set clean_notes to 1:
 ```json
 {
   "workload_id": "141970ea95fd5b4329cea05202659f39",
@@ -92,6 +108,18 @@ If you end up with a lot of mess and would like a fresh start, setting clean_not
   "clean_notes": 1
 }
 ```
+
+### Well-Architected Report Generator
+To generate an HTML report with compliance data, invoke the Lambda function with:
+```json
+{
+  "workload_id": "141970ea95fd5b4329cea05202659f39",
+  "dry_run": 0
+}
+```
+The `workload_id` parameter is used to retrieve question titles from the Well-Architected Tool API, making the report more descriptive.
+
+Setting `dry_run` to 1 will simulate the report generation without uploading to S3.
 
 ## Functionality
 
