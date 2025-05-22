@@ -8,7 +8,7 @@ module "lambda_function_wa_tool_updater" {
   source_path                       = "${path.module}/src/wa_tool_updater"
   attach_policy_statements          = true
   timeout                           = var.lambda_timeout
-  memory_size                       = 256
+  memory_size                       = 512
   cloudwatch_logs_retention_in_days = var.lambda_cloudwatch_logs_retention_in_days
 
   environment_variables = {
