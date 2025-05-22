@@ -135,7 +135,7 @@ def extract_question_id(rule_name):
         number_match = re.search(number_pattern, rule_name)
         
         if not number_match:
-            logger.debug(f"No question number found for rule_name={rule_name}")
+            logger.info(f"No question number found for rule_name={rule_name}")
             return None, None
             
         question_number = number_match.group(1).upper()  # Convert to uppercase for consistency
@@ -146,11 +146,11 @@ def extract_question_id(rule_name):
         
         if id_match:
             actual_question_id = id_match.group(1)
-            logger.debug(f"Extracted question_number={question_number}, actual_question_id={actual_question_id} from rule_name={rule_name}")
+            logger.info(f"Extracted question_number={question_number}, actual_question_id={actual_question_id} from rule_name={rule_name}")
             return question_number, actual_question_id
         
         # If we couldn't extract the actual questionId, just return the question number
-        logger.debug(f"Extracted question_number={question_number}, but couldn't extract actual_question_id from rule_name={rule_name}")
+        logger.info(f"Extracted question_number={question_number}, but couldn't extract actual_question_id from rule_name={rule_name}")
         return question_number, None
             
     except Exception as e:
@@ -200,7 +200,7 @@ def get_question_details(workload_id, pillar_id, question_id):
             choice_id = choice.get('ChoiceId')
             choice_title = choice.get('Title')
 
-            logger.info(f"get_question_details choice_id={choice_id}, choice_title={choice_title}, lens_arn={lens_arn}")
+            logger.debug(f"get_question_details choice_id={choice_id}, choice_title={choice_title}, lens_arn={lens_arn}")
             if choice_id and choice_title != "None of these" and pillar_id and lens_arn:
                 # Get Trusted Advisor checks for this choice
                 ta_checks = get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, choice_id)
