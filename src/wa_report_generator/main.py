@@ -116,119 +116,120 @@ def get_rule_details(rule_name):
 def get_question_titles_and_choices(workload_id):
     """
     Get question titles, choices, and helpful resources from the Well-Architected Tool API.
+    Maps questions based on their order in the API response.
+    Includes both answered and unanswered questions.
     
     Args:
         workload_id: The Well-Architected workload ID
         
     Returns:
-        Dictionary mapping question IDs to their titles, choices, and helpful resources
+        Dictionary mapping ordered question IDs (e.g., SEC01) to their titles, choices, and helpful resources
     """
     question_data = {}
-    lens_alias = "wellarchitected"
+    lens_alias = "wellarchitected"  # Focus only on wellarchitected lens
     
-    # Process each pillar
-    for pillar_id in ['security', 'reliability', 'costOptimization']:
-        try:
-            # Get all questions for this pillar
-            response = wellarchitected_client.list_answers(
-                WorkloadId=workload_id,
-                LensAlias=lens_alias,
-                PillarId=pillar_id,
-                MaxResults=50
-            )
-            
-            # Extract question titles and helpful resources
-            for question in response.get('AnswerSummaries', []):
-                question_id = question.get('QuestionId')
-                question_title = question.get('QuestionTitle')
-                helpful_resources = []
-                choices = {}
+    try:
+        # First, get the lens version
+        lens_response = wellarchitected_client.get_lens(
+            LensAlias=lens_alias
+        )
+        lens_version = lens_response.get('Lens', {}).get('LensVersion')
+        
+        # Get all pillars and their questions
+        pillars = {
+            'security': 'SEC',
+            'reliability': 'REL',
+            'costOptimization': 'COST'
+        }
+        
+        for pillar_id, prefix in pillars.items():
+            try:
+                # We need to use ListLensReviewImprovements to get all questions
+                paginator = wellarchitected_client.get_paginator('list_lens_review_improvements')
+                page_iterator = paginator.paginate(
+                    WorkloadId=workload_id,
+                    LensAlias=lens_alias,
+                    PillarId=pillar_id
+                )
                 
-                # Try to get helpful resources and choices if available
-                try:
-                    answer_response = wellarchitected_client.get_answer(
-                        WorkloadId=workload_id,
-                        LensAlias=lens_alias,
-                        QuestionId=question_id
-                    )
-                    
-                    # Extract helpful resources
-                    for resource in answer_response.get('Answer', {}).get('HelpfulResources', []):
-                        helpful_resources.append({
-                            'title': resource.get('DisplayText', ''),
-                            'url': resource.get('Url', '')
-                        })
-                    
-                    # Extract choices
-                    for choice in answer_response.get('Answer', {}).get('Choices', []):
-                        choice_id = choice.get('ChoiceId')
-                        choice_title = choice.get('Title')
-                        if choice_id and choice_title:
-                            choices[choice_id] = {
-                                'title': choice_title,
-                                'description': choice.get('Description', ''),
-                                'resources': []  # Will store compliance resources for this choice
-                            }
-                except Exception as e:
-                    logger.warning(f"Could not retrieve details for question {question_id}: {e}")
+                # Collect all questions for this pillar
+                questions = []
+                for page in page_iterator:
+                    for improvement in page.get('ImprovementSummaries', []):
+                        question_id = improvement.get('QuestionId')
+                        if question_id:
+                            questions.append(question_id)
                 
-                if question_id and question_title:
-                    # Extract the short question ID (e.g., SEC01) from the full ID
-                    short_id = None
-                    if question_id.startswith('security_'):
-                        short_id = 'SEC' + question_id[9:11]
-                    elif question_id.startswith('reliability_'):
-                        short_id = 'REL' + question_id[12:14]
-                    elif question_id.startswith('costOptimization_'):
-                        short_id = 'COST' + question_id[17:19]
-                    
-                    if short_id:
-                        question_data[short_id] = {
+                # Process each question in order
+                question_idx = 1
+                for question_id in questions:
+                    try:
+                        # Get question details
+                        question_response = wellarchitected_client.get_answer(
+                            WorkloadId=workload_id,
+                            LensAlias=lens_alias,
+                            QuestionId=question_id
+                        )
+                        
+                        question_title = question_response.get('Answer', {}).get('QuestionTitle', '')
+                        helpful_resources = []
+                        choices = {}
+                        
+                        # Extract helpful resources
+                        for resource in question_response.get('Answer', {}).get('HelpfulResources', []):
+                            helpful_resources.append({
+                                'title': resource.get('DisplayText', ''),
+                                'url': resource.get('Url', '')
+                            })
+                        
+                        # Extract choices
+                        for choice in question_response.get('Answer', {}).get('Choices', []):
+                            choice_id = choice.get('ChoiceId')
+                            choice_title = choice.get('Title')
+                            if choice_id and choice_title:
+                                choices[choice_id] = {
+                                    'title': choice_title,
+                                    'description': choice.get('Description', ''),
+                                    'resources': []  # Will store compliance resources for this choice
+                                }
+                        
+                        # Create the ordered ID (e.g., SEC01, REL02)
+                        ordered_id = f"{prefix}{question_idx:02d}"
+                        question_idx += 1
+                        
+                        question_data[ordered_id] = {
                             'title': question_title,
                             'helpful_resources': helpful_resources,
                             'choices': choices,
-                            'full_id': question_id
+                            'full_id': question_id  # Store the original ID for reference
                         }
-                        logger.debug(f"Found data for question {short_id}: {question_title} with {len(helpful_resources)} helpful resources and {len(choices)} choices")
-            
-            logger.info(f"Retrieved {len(response.get('AnswerSummaries', []))} questions for pillar {pillar_id}")
-            
-        except Exception as e:
-            logger.error(f"Error getting question data for pillar {pillar_id}: {e}")
+                        logger.debug(f"Mapped ordered ID {ordered_id} to question {question_id}: {question_title}")
+                        
+                    except Exception as e:
+                        logger.warning(f"Could not retrieve details for question {question_id}: {e}")
+                
+                logger.info(f"Mapped {question_idx-1} questions for pillar {pillar_id}")
+                
+            except Exception as e:
+                logger.error(f"Error getting question data for pillar {pillar_id}: {e}")
+    
+    except Exception as e:
+        logger.error(f"Error getting lens details: {e}")
     
     return question_data
 
 def map_best_practice_to_question(best_practice_id):
     """
     Map a best practice ID (e.g., SEC01) to a Well-Architected question ID.
-    This is a simplified mapping and may need to be enhanced.
+    This is a direct mapping since we're using the same ordered IDs.
     
     Args:
         best_practice_id: The best practice ID (e.g., SEC01)
         
     Returns:
-        The corresponding Well-Architected question ID or None if not found
+        The same ID, since we're using ordered IDs as keys in our question_data dictionary
     """
-    # Extract the prefix (e.g., SEC) and number (e.g., 01)
-    if len(best_practice_id) >= 5:
-        prefix = best_practice_id[:3].lower()
-        number = best_practice_id[3:5]
-        
-        # Map prefix to pillar
-        pillar_id = None
-        if prefix == "sec":
-            pillar_id = "security"
-        elif prefix == "rel":
-            pillar_id = "reliability"
-        elif prefix == "cos":
-            pillar_id = "costOptimization"
-        
-        if pillar_id:
-            # Construct a question ID pattern
-            # This is a simplified approach and may need to be adjusted
-            return f"{pillar_id}_{number}"
-    
-    return None
+    return best_practice_id
 
 def collect_compliance_data(conformance_packs, workload_id=None):
     """
