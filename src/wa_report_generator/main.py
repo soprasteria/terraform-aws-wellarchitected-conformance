@@ -181,6 +181,7 @@ def get_question_details(workload_id, question_id):
         question_title = question_response.get('Answer', {}).get('QuestionTitle', '')
         helpful_resources = []
         choices = {}
+        description = question_response.get('Answer', {}).get('QuestionDescription', '')
         
         # Extract helpful resources
         for resource in question_response.get('Answer', {}).get('HelpfulResources', []):
@@ -202,6 +203,7 @@ def get_question_details(workload_id, question_id):
         
         return {
             'title': question_title,
+            'description': description,
             'helpful_resources': helpful_resources,
             'choices': choices,
             'full_id': question_id
@@ -384,6 +386,7 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                 # Initialize with basic information
                 compliance_data[pillar_name][question_number] = {
                     'title': f"Best Practice {question_number}",
+                    'description': '',
                     'helpful_resources': [],
                     'resources': [],
                     'config_rules': {},
@@ -404,10 +407,11 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                     
                     if full_question_id:
                         # Try to get question details from the Well-Architected Tool
-                        question_details = get_question_details(workload_id, full_question_id)
+                        question_details = get_question_details(workload_id, actual_question_id)
                         logger.info(f"Got question details from the Well-Architected Tool API: {question_details}")
                         if question_details:
                             compliance_data[pillar_name][question_number]['title'] = question_details.get('title', compliance_data[pillar_name][question_number]['title'])
+                            compliance_data[pillar_name][question_number]['description'] = question_details.get('description', '')
                             compliance_data[pillar_name][question_number]['helpful_resources'] = question_details.get('helpful_resources', [])
                             compliance_data[pillar_name][question_number]['full_id'] = full_question_id
                             
