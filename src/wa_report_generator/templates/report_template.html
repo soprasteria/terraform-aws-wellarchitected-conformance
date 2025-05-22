@@ -36,17 +36,20 @@
         table {
             border-collapse: collapse;
             width: 100%;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
         }
         th, td {
             border: 1px solid #ddd;
-            padding: 8px;
+            padding: 4px 6px;
             text-align: left;
         }
         th {
             background-color: #f2f2f2;
             position: sticky;
             top: 0;
+            font-size: 0.9em;
+            white-space: nowrap;
         }
         tr:nth-child(even) {
             background-color: #f9f9f9;
@@ -86,14 +89,16 @@
             color: white;
         }
         .resources {
-            margin-top: 10px;
-            padding: 10px;
+            margin-top: 8px;
+            padding: 8px;
             background-color: #f0f7ff;
             border-left: 3px solid #0066cc;
         }
         .resources h4 {
             margin-top: 0;
+            margin-bottom: 5px;
             color: #0066cc;
+            font-size: 0.95em;
         }
         .resources ul {
             margin: 0;
@@ -112,17 +117,22 @@
             color: #0066cc;
         }
         .question-section {
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             border: 1px solid #ddd;
-            padding: 15px;
+            padding: 10px;
             border-radius: 5px;
             background-color: #fafafa;
         }
         .config-rule-section {
-            margin: 15px 0;
-            padding: 10px;
+            margin: 10px 0;
+            padding: 8px;
             background-color: #f9f9f9;
             border-left: 3px solid #4CAF50;
+        }
+        .config-rule-section h5 {
+            margin-top: 0;
+            margin-bottom: 5px;
+            font-size: 0.95em;
         }
         .no-resources {
             font-style: italic;
@@ -138,15 +148,18 @@
         }
         .helpful-resource {
             background-color: #f0f7ff;
-            padding: 8px;
-            margin-bottom: 5px;
+            padding: 5px;
+            margin-bottom: 3px;
             border-left: 3px solid #0066cc;
+            font-size: 0.9em;
         }
         .helpful-resource-title {
             font-weight: bold;
+            margin-bottom: 2px;
         }
         .helpful-resource-url {
             word-break: break-all;
+            font-size: 0.85em;
         }
         .actual-question-id {
             font-size: 0.8em;
@@ -300,19 +313,19 @@
                     {% for rule_name, resources in question_data.config_rules.items() %}
                         <div class="config-rule-section">
                             <h5>{{ rule_name }}</h5>
-                            <table>
+                            <table class="compact-table">
                                 <thead>
                                     <tr>
                                         <th>Resource Type</th>
                                         <th>Resource ID</th>
-                                        <th>Compliance Status</th>
+                                        <th>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for resource in resources %}
                                         <tr>
                                             <td>{{ resource.resource_type }}</td>
-                                            <td>{{ resource.resource_id }}</td>
+                                            <td class="resource-id">{{ resource.resource_id }}</td>
                                             <td class="{{ 'compliant' if resource.compliance_status == 'COMPLIANT' else 'non-compliant' }}">
                                                 {{ resource.compliance_status }}
                                             </td>
@@ -340,4 +353,13 @@
             padding: 15px;
             margin-bottom: 20px;
             border-radius: 5px;
+        }
+        .compact-table {
+            font-size: 0.85em;
+        }
+        .resource-id {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
