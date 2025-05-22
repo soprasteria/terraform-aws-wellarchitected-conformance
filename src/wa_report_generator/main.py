@@ -157,7 +157,7 @@ def extract_question_id(rule_name):
         logger.warning(f"Error extracting QuestionId from rule name {rule_name}: {e}")
         return None, None
 
-def get_question_details(workload_id, question_id):
+def get_question_details(workload_id, pillar_id, question_id):
     """
     Get question details from the Well-Architected Tool API for a specific question ID.
     
@@ -169,13 +169,13 @@ def get_question_details(workload_id, question_id):
         Dictionary with question title and helpful resources, or None if not found
     """
     lens_alias = "wellarchitected"
-    
     try:
         # Get lens ARN
         lens_response = wellarchitected_client.get_lens(
             LensAlias=lens_alias
         )
-        lens_arn = lens_response.get('Lens', {}).get('Arn')
+        #logger.info(f"lens_response={lens_response}")
+        lens_arn = lens_response.get('Lens', {}).get('LensArn')
         
         # Get question details
         question_response = wellarchitected_client.get_answer(
@@ -183,20 +183,10 @@ def get_question_details(workload_id, question_id):
             LensAlias=lens_alias,
             QuestionId=question_id
         )
-        
         question_title = question_response.get('Answer', {}).get('QuestionTitle', '')
         helpful_resources = []
         choices = {}
         description = question_response.get('Answer', {}).get('QuestionDescription', '')
-        
-        # Extract pillar ID from question ID
-        pillar_id = None
-        if question_id.startswith('security_'):
-            pillar_id = 'security'
-        elif question_id.startswith('reliability_'):
-            pillar_id = 'reliability'
-        elif question_id.startswith('costOptimization_'):
-            pillar_id = 'costOptimization'
         
         # Extract helpful resources
         for resource in question_response.get('Answer', {}).get('HelpfulResources', []):
@@ -204,14 +194,16 @@ def get_question_details(workload_id, question_id):
                 'title': resource.get('DisplayText', ''),
                 'url': resource.get('Url', '')
             })
-        
+
         # Extract choices and get Trusted Advisor checks for each choice
         for choice in question_response.get('Answer', {}).get('Choices', []):
             choice_id = choice.get('ChoiceId')
             choice_title = choice.get('Title')
-            if choice_id and choice_title and pillar_id and lens_arn:
+
+            logger.info(f"get_question_details choice_id={choice_id}, choice_title={choice_title}, lens_arn={lens_arn}")
+            if choice_id and choice_title != "None of these" and pillar_id and lens_arn:
                 # Get Trusted Advisor checks for this choice
-                ta_checks = get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, choice_id)
+                ta_checks = get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, choice_id)
                 
                 choices[choice_id] = {
                     'title': choice_title,
@@ -415,27 +407,16 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                 }
                 
                 # If we have a workload_id and actual_question_id, try to get question details
-                if workload_id and actual_question_id:
-                    # Construct the full question ID based on pillar
-                    if pillar_name == 'Security':
-                        full_question_id = f"security_{actual_question_id}"
-                    elif pillar_name == 'Reliability':
-                        full_question_id = f"reliability_{actual_question_id}"
-                    elif pillar_name == 'Cost Optimization':
-                        full_question_id = f"costOptimization_{actual_question_id}"
-                    else:
-                        full_question_id = None
-                    
-                    if full_question_id:
-                        # Try to get question details from the Well-Architected Tool
-                        question_details = get_question_details(workload_id, actual_question_id)
-                        logger.debug(f"Got question details from the Well-Architected Tool API: {question_details}")
-                        if question_details:
-                            compliance_data[pillar_name][question_number]['title'] = question_details.get('title', compliance_data[pillar_name][question_number]['title'])
-                            compliance_data[pillar_name][question_number]['description'] = question_details.get('description', '')
-                            compliance_data[pillar_name][question_number]['helpful_resources'] = question_details.get('helpful_resources', [])
-                            compliance_data[pillar_name][question_number]['full_id'] = full_question_id
-                            compliance_data[pillar_name][question_number]['choices'] = question_details.get('choices', {})
+                if workload_id and actual_question_id:           
+                    # Try to get question details from the Well-Architected Tool
+                    question_details = get_question_details(workload_id, pillar_id, actual_question_id)
+                    logger.debug(f"Got question details from the Well-Architected Tool API: {question_details}")
+                    if question_details:
+                        compliance_data[pillar_name][question_number]['title'] = question_details.get('title', compliance_data[pillar_name][question_number]['title'])
+                        compliance_data[pillar_name][question_number]['description'] = question_details.get('description', '')
+                        compliance_data[pillar_name][question_number]['helpful_resources'] = question_details.get('helpful_resources', [])
+                        compliance_data[pillar_name][question_number]['full_id'] = actual_question_id
+                        compliance_data[pillar_name][question_number]['choices'] = question_details.get('choices', {})
             
             # Get rule details including resources
             evaluation_results = get_rule_details(rule_name)
@@ -622,39 +603,79 @@ def lambda_handler(event, context):
                 'message': error_msg
             })
         }
-def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, choice_id):
+def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, choice_id):
     """
-    Get Trusted Advisor check details for a specific pillar and choice.
+    Get Trusted Advisor check details and compliance status for a specific pillar and choice.
     
     Args:
         workload_id: The Well-Architected workload ID
         lens_arn: The ARN of the lens
         pillar_id: The ID of the pillar
+        question_id: The ID of the question
         choice_id: The ID of the choice
         
     Returns:
-        List of Trusted Advisor check details
+        List of Trusted Advisor check details with compliance status
     """
+    logger.info(f"get_trusted_advisor_checks call(workload_id={workload_id}, lens_arn={lens_arn}, pillar_id={pillar_id}, question_id={question_id}, choice_id={choice_id}")
     try:
         # Get Trusted Advisor check details
-        response = wellarchitected_client.list_check_details(
+        details_response = wellarchitected_client.list_check_details(
             WorkloadId=workload_id,
             LensArn=lens_arn,
             PillarId=pillar_id,
+            QuestionId=question_id,
             ChoiceId=choice_id
         )
         
+        # Get check summaries for compliance status
+        try:
+            summaries_response = wellarchitected_client.list_check_summaries(
+                WorkloadId=workload_id,
+                LensArn=lens_arn,
+                PillarId=pillar_id,
+                QuestionId=question_id,
+                ChoiceId=choice_id
+            )
+            
+            # Create a mapping of check IDs to their compliance status
+            compliance_status = {}
+            for summary in summaries_response.get('CheckSummaries', []):
+                check_id = summary.get('CheckId')
+                if check_id:
+                    compliance_status[check_id] = {
+                        'status': summary.get('Status'),
+                        'risk': summary.get('Risk'),
+                        'reason': summary.get('Reason', ''),
+                        'flagged_resources': summary.get('FlaggedResources', 0),
+                        'updated_at': summary.get('UpdatedAt', '')
+                    }
+            logger.info(f"Got compliance status for {len(compliance_status)} checks")
+        except Exception as e:
+            logger.warning(f"Could not retrieve check summaries: {e}")
+            compliance_status = {}
+        
         check_details = []
-        for check in response.get('CheckDetails', []):
+        for check in details_response.get('CheckDetails', []):
+            check_id = check.get('Id')
+            status_info = compliance_status.get(check_id, {})
+            
             check_details.append({
+                'id': check_id,
                 'name': check.get('Name', ''),
                 'description': check.get('Description', ''),
                 'provider': check.get('Provider', ''),
-                'provider_name': check.get('ProviderName', '')
+                'provider_name': check.get('ProviderName', ''),
+                'status': status_info.get('status', 'UNKNOWN'),
+                'risk': status_info.get('risk', 'UNKNOWN'),
+                'reason': status_info.get('reason', ''),
+                'flagged_resources': status_info.get('flagged_resources', 0),
+                'updated_at': status_info.get('updated_at', '')
             })
         
+        logger.info(f"get_trusted_advisor_checks returned: {check_details}")
         return check_details
         
     except Exception as e:
-        logger.warning(f"Could not retrieve Trusted Advisor check details for pillar {pillar_id}, choice {choice_id}: {e}")
+        logger.warning(f"Could not retrieve Trusted Advisor check details for pillar {pillar_id}, question_id {question_id}, choice {choice_id}: {e}")
         return []

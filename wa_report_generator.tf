@@ -71,7 +71,8 @@ module "lambda_function_wa_report_generator" {
         "wellarchitected:GetLens",
         "wellarchitected:ListLensReviewImprovements",
         "wellarchitected:ExportLens",
-        "wellarchitected:ListCheckDetails"
+        "wellarchitected:ListCheckDetails",
+        "wellarchitected:ListCheckSummaries"
       ],
       resources = ["*"]
     }
