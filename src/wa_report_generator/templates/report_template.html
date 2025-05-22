@@ -113,6 +113,11 @@
             color: #333;
             margin-bottom: 5px;
         }
+        .choice-id {
+            font-weight: normal;
+            color: #666;
+            font-style: italic;
+        }
         .choice-description {
             font-style: italic;
             color: #666;
@@ -121,6 +126,28 @@
         .no-resources {
             font-style: italic;
             color: #666;
+        }
+        .rule-name {
+            font-size: 0.9em;
+            color: #666;
+            font-style: italic;
+        }
+        .mapping-info {
+            margin: 5px 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .helpful-resource {
+            background-color: #f0f7ff;
+            padding: 8px;
+            margin-bottom: 5px;
+            border-left: 3px solid #0066cc;
+        }
+        .helpful-resource-title {
+            font-weight: bold;
+        }
+        .helpful-resource-url {
+            word-break: break-all;
         }
     </style>
 </head>
@@ -171,11 +198,12 @@
                 {% if best_practice_data.helpful_resources and best_practice_data.helpful_resources|length > 0 %}
                 <div class="resources">
                     <h4>Helpful Resources:</h4>
-                    <ul>
-                        {% for resource in best_practice_data.helpful_resources %}
-                            <li><a href="{{ resource.url }}" target="_blank">{{ resource.title }}</a></li>
-                        {% endfor %}
-                    </ul>
+                    {% for resource in best_practice_data.helpful_resources %}
+                        <div class="helpful-resource">
+                            <div class="helpful-resource-title">{{ resource.title }}</div>
+                            <div class="helpful-resource-url"><a href="{{ resource.url }}" target="_blank">{{ resource.url }}</a></div>
+                        </div>
+                    {% endfor %}
                 </div>
                 {% endif %}
                 
@@ -183,7 +211,7 @@
                     {% for choice_id, choice_data in best_practice_data.choices.items() %}
                         {% if choice_data.resources and choice_data.resources|length > 0 %}
                             <div class="choice-section">
-                                <div class="choice-title">{{ choice_data.title }}</div>
+                                <div class="choice-title">{{ choice_data.title }} <span class="choice-id">(ChoiceId: {{ choice_id }})</span></div>
                                 {% if choice_data.description %}
                                     <div class="choice-description">{{ choice_data.description }}</div>
                                 {% endif %}
@@ -194,6 +222,7 @@
                                             <th>Resource Type</th>
                                             <th>Resource ID</th>
                                             <th>Compliance Status</th>
+                                            <th>Config Rule</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -203,6 +232,10 @@
                                                 <td>{{ resource.resource_id }}</td>
                                                 <td class="{{ 'compliant' if resource.compliance_status == 'COMPLIANT' else 'non-compliant' }}">
                                                     {{ resource.compliance_status }}
+                                                </td>
+                                                <td>
+                                                    <div>{{ resource.rule_name }}</div>
+                                                    <div class="mapping-info">Mapping: {{ best_practice_id }}-{{ choice_id }}</div>
                                                 </td>
                                             </tr>
                                         {% endfor %}
@@ -221,13 +254,14 @@
                 {% endfor %}
                 
                 {% if resources_without_choice|length > 0 %}
-                    <h4>Other Resources</h4>
+                    <h4>Resources Without Choice Mapping</h4>
                     <table>
                         <thead>
                             <tr>
                                 <th>Resource Type</th>
                                 <th>Resource ID</th>
                                 <th>Compliance Status</th>
+                                <th>Config Rule</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -237,6 +271,10 @@
                                     <td>{{ resource.resource_id }}</td>
                                     <td class="{{ 'compliant' if resource.compliance_status == 'COMPLIANT' else 'non-compliant' }}">
                                         {{ resource.compliance_status }}
+                                    </td>
+                                    <td>
+                                        <div>{{ resource.rule_name }}</div>
+                                        <div class="mapping-info">No ChoiceId mapping found</div>
                                     </td>
                                 </tr>
                             {% endfor %}
