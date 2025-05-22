@@ -145,11 +145,11 @@
         .helpful-resource-url {
             word-break: break-all;
         }
-        .toc {
-            background-color: #f8f8f8;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 5px;
+        .actual-question-id {
+            font-size: 0.8em;
+            color: #666;
+            font-style: italic;
+            margin-left: 10px;
         }
         .toc ul {
             list-style-type: none;
@@ -210,7 +210,14 @@
         <h2>Table of Contents</h2>
         <ul>
             {% for pillar_name, pillar_data in compliance_data.items() %}
-                <li><a href="#{{ pillar_name | lower | replace(' ', '-') }}">{{ pillar_name }} Pillar</a></li>
+                <li><a href="#{{ pillar_name | lower | replace(' ', '-') }}">{{ pillar_name }} Pillar</a>
+                    <ul>
+                        {% set sorted_questions = pillar_data.keys()|list|sort %}
+                        {% for question_id in sorted_questions %}
+                            <li><a href="#{{ pillar_name | lower | replace(' ', '-') }}-{{ question_id | lower }}">{{ question_id }}: {{ pillar_data[question_id].title }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </li>
             {% endfor %}
         </ul>
     </div>
@@ -259,11 +266,16 @@
             </div>
         </div>
         
-        {% for question_id, question_data in pillar_data.items() %}
-            <div class="question-section">
+        {% set sorted_questions = pillar_data.keys()|list|sort %}
+        {% for question_id in sorted_questions %}
+            {% set question_data = pillar_data[question_id] %}
+            <div class="question-section" id="{{ pillar_name | lower | replace(' ', '-') }}-{{ question_id | lower }}">
                 <h3>
                     <span class="question-id">{{ question_id }}</span>: 
                     <span class="question-title">{{ question_data.title }}</span>
+                    {% if question_data.actual_question_id %}
+                    <span class="actual-question-id">(API ID: {{ question_data.actual_question_id }})</span>
+                    {% endif %}
                 </h3>
                 
                 <!-- Helpful Resources -->
@@ -320,3 +332,9 @@
     </footer>
 </body>
 </html>
+        .toc {
+            background-color: #f8f8f8;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }

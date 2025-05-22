@@ -117,32 +117,45 @@ def extract_question_id(rule_name):
     """
     Extract QuestionId from an AWS Config rule name.
     
-    Format: QuestionId-ChoiceId_bp_name-of-check
+    Format: QuestionNumber-ActualQuestionId_bp_name-of-check
     Examples: 
     - SEC05-network-protection_bp_vpc-default-security-group-closed-conformance-pack-qk5aog3dr
     - COST01-cloud-financial-management_bp_aws-budgets-conformance-pack-zg7bakjef
+    - REL09-backing-up-data_bp_backup-plan-min-frequency-and-min-retention-check-conformance-pack-qyaut3rcc
     
     Args:
         rule_name: The AWS Config rule name
         
     Returns:
-        QuestionId or None if not found
+        Tuple of (question_number, actual_question_id) or (question_number, None) if actual_question_id not found
     """
     try:
-        # Look for patterns like SEC05, REL02, or COST01
-        pattern = r'([A-Za-z]{3,4}\d{2})'
-        match = re.search(pattern, rule_name)
+        # First extract the question number (e.g., SEC05, REL09)
+        number_pattern = r'([A-Za-z]{3,4}\d{2})'
+        number_match = re.search(number_pattern, rule_name)
         
-        if match:
-            question_id = match.group(1).upper()  # Convert to uppercase for consistency
-            logger.debug(f"Extracted question_id={question_id} from rule_name={rule_name}")
-            return question_id
+        if not number_match:
+            logger.debug(f"No question number found for rule_name={rule_name}")
+            return None, None
             
-        logger.debug(f"No match found for rule_name={rule_name} using pattern {pattern}")
-        return None
+        question_number = number_match.group(1).upper()  # Convert to uppercase for consistency
+        
+        # Then extract the actual questionId (e.g., network-protection, backing-up-data)
+        id_pattern = f"{question_number}-([a-z0-9-]+)(?:_bp|_)"
+        id_match = re.search(id_pattern, rule_name)
+        
+        if id_match:
+            actual_question_id = id_match.group(1)
+            logger.debug(f"Extracted question_number={question_number}, actual_question_id={actual_question_id} from rule_name={rule_name}")
+            return question_number, actual_question_id
+        
+        # If we couldn't extract the actual questionId, just return the question number
+        logger.debug(f"Extracted question_number={question_number}, but couldn't extract actual_question_id from rule_name={rule_name}")
+        return question_number, None
+            
     except Exception as e:
         logger.warning(f"Error extracting QuestionId from rule name {rule_name}: {e}")
-        return None
+        return None, None
 
 def get_question_titles_and_choices(workload_id):
     """
@@ -259,101 +272,104 @@ def map_best_practice_to_question(best_practice_id):
 def collect_compliance_data(conformance_packs, workload_id=None):
     """
     Collect compliance data from all conformance packs for HTML report generation.
+    Uses the Well-Architected lens as the source of truth for questionIds.
     
     Args:
         conformance_packs: List of conformance pack names to process
-        workload_id: Optional Well-Architected workload ID to retrieve question titles
+        workload_id: Well-Architected workload ID to retrieve question data
         
     Returns:
-        Dictionary with compliance data organized by pillar and best practice
+        Dictionary with compliance data organized by pillar and question
     """
     compliance_data = {}
     
-    # Get question titles and helpful resources if workload_id is provided
-    question_data = {}
-    if workload_id:
-        try:
-            question_data = get_question_titles_and_choices(workload_id)
-            logger.info(f"Retrieved data for {len(question_data)} questions from Well-Architected Tool")
-        except Exception as e:
-            logger.error(f"Error retrieving question data: {e}")
-    
-    for conformance_pack_name in conformance_packs:
-        # Extract pillar name for this conformance pack
-        pillar_name = None
-        for prefix, pillar_id in PILLAR_MAPPING.items():
-            if prefix in conformance_pack_name:
-                if pillar_id == 'security':
-                    pillar_name = 'Security'
-                elif pillar_id == 'reliability':
-                    pillar_name = 'Reliability'
-                elif pillar_id == 'costOptimization':
-                    pillar_name = 'Cost Optimization'
-                break
+    # First, get all questions from the Well-Architected lens
+    if not workload_id:
+        logger.warning("No workload_id provided, cannot retrieve Well-Architected questions")
+        return compliance_data
         
-        if not pillar_name:
-            logger.warning(f"Could not determine pillar name for conformance pack: {conformance_pack_name}")
-            continue
-            
-        # Initialize pillar data if not exists
-        if pillar_name not in compliance_data:
-            compliance_data[pillar_name] = {}
-            
-        # Get conformance pack rules
-        rules = get_conformance_pack_details(conformance_pack_name)
+    try:
+        # Get all questions from the Well-Architected lens
+        question_data = get_question_titles_and_choices(workload_id)
+        logger.info(f"Retrieved data for {len(question_data)} questions from Well-Architected Tool")
         
-        for rule in rules:
-            rule_name = rule.get('ConfigRuleName')
-            compliance_type = rule.get('Compliance', {}).get('ComplianceType')
+        # Initialize the compliance data structure with all questions
+        for pillar_id, prefix in {'security': 'Security', 'reliability': 'Reliability', 'costOptimization': 'Cost Optimization'}.items():
+            compliance_data[prefix] = {}
             
-            # Extract question ID from rule name
-            question_id = extract_question_id(rule_name)
+            # Find all questions for this pillar
+            for question_id, question_info in question_data.items():
+                if question_id.startswith(pillar_id[:3].upper()):
+                    compliance_data[prefix][question_id] = {
+                        'title': question_info.get('title', f"Question {question_id}"),
+                        'helpful_resources': question_info.get('helpful_resources', []),
+                        'resources': [],
+                        'config_rules': {},
+                        'actual_question_id': question_info.get('full_id')
+                    }
+        
+        # Now process AWS Config rules and add compliance data to matching questions
+        for conformance_pack_name in conformance_packs:
+            # Extract pillar name for this conformance pack
+            pillar_name = None
+            for prefix, pillar_id in PILLAR_MAPPING.items():
+                if prefix in conformance_pack_name:
+                    if pillar_id == 'security':
+                        pillar_name = 'Security'
+                    elif pillar_id == 'reliability':
+                        pillar_name = 'Reliability'
+                    elif pillar_id == 'costOptimization':
+                        pillar_name = 'Cost Optimization'
+                    break
             
-            if not question_id:
-                logger.warning(f"Could not extract question ID from rule name: {rule_name}")
+            if not pillar_name:
+                logger.warning(f"Could not determine pillar name for conformance pack: {conformance_pack_name}")
                 continue
                 
-            # Try to find matching question data
-            title = f"Best Practice {question_id}"
-            helpful_resources = []
+            # Get conformance pack rules
+            rules = get_conformance_pack_details(conformance_pack_name)
             
-            if question_id in question_data:
-                title = question_data[question_id].get('title', title)
-                helpful_resources = question_data[question_id].get('helpful_resources', [])
-                logger.debug(f"Found data for {question_id}: {title}")
-            
-            # Initialize question data if not exists
-            if question_id not in compliance_data[pillar_name]:
-                compliance_data[pillar_name][question_id] = {
-                    'title': title,
-                    'helpful_resources': helpful_resources,
-                    'resources': [],
-                    'config_rules': {}  # Track config rules for this question
-                }
+            for rule in rules:
+                rule_name = rule.get('ConfigRuleName')
                 
-            # Get rule details including resources
-            evaluation_results = get_rule_details(rule_name)
-            
-            for result in evaluation_results:
-                resource_type = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceType')
-                resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
-                resource_compliance = result.get('ComplianceType')
+                # Extract question number and actual question ID from rule name
+                question_number, actual_question_id = extract_question_id(rule_name)
                 
-                resource_data = {
-                    'resource_type': resource_type,
-                    'resource_id': resource_id,
-                    'compliance_status': resource_compliance,
-                    'rule_name': rule_name
-                }
-                
-                # Add resource to the main resources list
-                compliance_data[pillar_name][question_id]['resources'].append(resource_data)
-                
-                # Track this config rule
-                if rule_name not in compliance_data[pillar_name][question_id]['config_rules']:
-                    compliance_data[pillar_name][question_id]['config_rules'][rule_name] = []
-                
-                compliance_data[pillar_name][question_id]['config_rules'][rule_name].append(resource_data)
+                if not question_number:
+                    logger.warning(f"Could not extract question number from rule name: {rule_name}")
+                    continue
+                    
+                # Find the matching question in our compliance data
+                if question_number in compliance_data[pillar_name]:
+                    # Get rule details including resources
+                    evaluation_results = get_rule_details(rule_name)
+                    
+                    for result in evaluation_results:
+                        resource_type = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceType')
+                        resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
+                        resource_compliance = result.get('ComplianceType')
+                        
+                        resource_data = {
+                            'resource_type': resource_type,
+                            'resource_id': resource_id,
+                            'compliance_status': resource_compliance,
+                            'rule_name': rule_name,
+                            'actual_question_id': actual_question_id
+                        }
+                        
+                        # Add resource to the main resources list
+                        compliance_data[pillar_name][question_number]['resources'].append(resource_data)
+                        
+                        # Track this config rule
+                        if rule_name not in compliance_data[pillar_name][question_number]['config_rules']:
+                            compliance_data[pillar_name][question_number]['config_rules'][rule_name] = []
+                        
+                        compliance_data[pillar_name][question_number]['config_rules'][rule_name].append(resource_data)
+                else:
+                    logger.warning(f"No matching question found for {question_number} in pillar {pillar_name}")
+    
+    except Exception as e:
+        logger.error(f"Error collecting compliance data: {e}")
     
     return compliance_data
 
