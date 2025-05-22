@@ -7,7 +7,7 @@ module "lambda_function_wa_report_generator" {
   handler       = "main.lambda_handler"
   runtime       = var.lambda_python_runtime
   timeout       = var.lambda_timeout
-
+  memory_size   = 512
   source_path = [
     {
       path             = "${path.module}/src/wa_report_generator"
