@@ -154,7 +154,7 @@ def extract_question_id(rule_name):
         
         if id_match:
             actual_question_id = id_match.group(1)
-            logger.info(f"Extracted question_number={question_number}, actual_question_id={actual_question_id} from rule_name={rule_name}")
+            logger.debug(f"Extracted question_number={question_number}, actual_question_id={actual_question_id} from rule_name={rule_name}")
             return question_number, actual_question_id
         
         # If we couldn't extract the actual questionId, just return the question number
