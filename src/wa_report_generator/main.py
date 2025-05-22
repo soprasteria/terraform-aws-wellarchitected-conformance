@@ -160,8 +160,7 @@ def extract_question_id(rule_name):
 def get_question_titles_and_choices(workload_id):
     """
     Get question titles, choices, and helpful resources from the Well-Architected Tool API.
-    Maps questions based on their order in the API response.
-    Includes both answered and unanswered questions.
+    Uses export-lens API to get all questions from the wellarchitected lens.
     
     Args:
         workload_id: The Well-Architected workload ID
@@ -173,6 +172,15 @@ def get_question_titles_and_choices(workload_id):
     lens_alias = "wellarchitected"  # Focus only on wellarchitected lens
     
     try:
+        # Get the lens details using export-lens API
+        lens_export = wellarchitected_client.export_lens(
+            LensAlias=lens_alias,
+            LensVersion='latest'
+        )
+        
+        # Parse the lens JSON
+        lens_json = json.loads(lens_export.get('LensJSON', '{}'))
+        
         # Get all pillars and their questions
         pillars = {
             'security': 'SEC',
@@ -180,24 +188,81 @@ def get_question_titles_and_choices(workload_id):
             'costOptimization': 'COST'
         }
         
+        # Process each pillar
         for pillar_id, prefix in pillars.items():
             try:
-                # Use ListLensReviewImprovements without pagination
-                response = wellarchitected_client.list_lens_review_improvements(
-                    WorkloadId=workload_id,
-                    LensAlias=lens_alias,
-                    PillarId=pillar_id
-                )
+                # Find the pillar in the lens JSON
+                pillar_data = None
+                for pillar in lens_json.get('pillars', []):
+                    if pillar.get('id') == pillar_id:
+                        pillar_data = pillar
+                        break
                 
-                # Collect all questions for this pillar
-                questions = []
-                for improvement in response.get('ImprovementSummaries', []):
-                    question_id = improvement.get('QuestionId')
-                    if question_id:
-                        questions.append(question_id)
+                if not pillar_data:
+                    logger.warning(f"Could not find pillar {pillar_id} in lens export")
+                    continue
                 
-                # Process each question in order
+                # Process each question in the pillar
                 question_idx = 1
+                for question in pillar_data.get('questions', []):
+                    question_id = question.get('id')
+                    question_title = question.get('title')
+                    
+                    if not question_id or not question_title:
+                        continue
+                    
+                    # Extract helpful resources
+                    helpful_resources = []
+                    for resource in question.get('helpfulResources', {}).get('content', []):
+                        helpful_resources.append({
+                            'title': resource.get('displayText', ''),
+                            'url': resource.get('url', '')
+                        })
+                    
+                    # Extract choices
+                    choices = {}
+                    for choice in question.get('choices', []):
+                        choice_id = choice.get('id')
+                        choice_title = choice.get('title')
+                        if choice_id and choice_title:
+                            choices[choice_id] = {
+                                'title': choice_title,
+                                'description': choice.get('description', ''),
+                                'resources': []  # Will store compliance resources for this choice
+                            }
+                    
+                    # Create the ordered ID (e.g., SEC01, REL02)
+                    ordered_id = f"{prefix}{question_idx:02d}"
+                    question_idx += 1
+                    
+                    # Extract the actual question ID part from the full ID
+                    # Example: security_01 -> extract "01"
+                    # Example: reliability_resiliency -> extract "resiliency"
+                    actual_id_parts = question_id.split('_')
+                    actual_question_id = actual_id_parts[-1] if len(actual_id_parts) > 1 else ""
+                    
+                    question_data[ordered_id] = {
+                        'title': question_title,
+                        'helpful_resources': helpful_resources,
+                        'choices': choices,
+                        'full_id': question_id,  # Store the original ID for reference
+                        'actual_id': actual_question_id  # Store the extracted actual ID part
+                    }
+                    logger.debug(f"Mapped ordered ID {ordered_id} to question {question_id} with actual_id {actual_question_id}")
+                
+                logger.info(f"Mapped {question_idx-1} questions for pillar {pillar_id}")
+                
+            except Exception as e:
+                logger.error(f"Error processing pillar {pillar_id}: {e}")
+    
+    except Exception as e:
+        logger.error(f"Error exporting lens: {e}")
+        
+        # Fallback to using workload-specific API calls if export-lens fails
+        logger.info("Falling back to workload-specific API calls")
+        return get_question_titles_and_choices_fallback(workload_id)
+    
+    return question_data
                 for question_id in questions:
                     try:
                         # Get question details
@@ -543,3 +608,107 @@ def lambda_handler(event, context):
                 'message': error_msg
             })
         }
+def get_question_titles_and_choices_fallback(workload_id):
+    """
+    Fallback method to get question titles and choices using workload-specific API calls.
+    Used if export-lens fails.
+    
+    Args:
+        workload_id: The Well-Architected workload ID
+        
+    Returns:
+        Dictionary mapping ordered question IDs (e.g., SEC01) to their titles, choices, and helpful resources
+    """
+    question_data = {}
+    lens_alias = "wellarchitected"  # Focus only on wellarchitected lens
+    
+    try:
+        # Get all pillars and their questions
+        pillars = {
+            'security': 'SEC',
+            'reliability': 'REL',
+            'costOptimization': 'COST'
+        }
+        
+        for pillar_id, prefix in pillars.items():
+            try:
+                # Use ListLensReviewImprovements without pagination
+                response = wellarchitected_client.list_lens_review_improvements(
+                    WorkloadId=workload_id,
+                    LensAlias=lens_alias,
+                    PillarId=pillar_id
+                )
+                
+                # Collect all questions for this pillar
+                questions = []
+                for improvement in response.get('ImprovementSummaries', []):
+                    question_id = improvement.get('QuestionId')
+                    if question_id:
+                        questions.append(question_id)
+                
+                # Process each question in order
+                question_idx = 1
+                for question_id in questions:
+                    try:
+                        # Get question details
+                        question_response = wellarchitected_client.get_answer(
+                            WorkloadId=workload_id,
+                            LensAlias=lens_alias,
+                            QuestionId=question_id
+                        )
+                        
+                        question_title = question_response.get('Answer', {}).get('QuestionTitle', '')
+                        helpful_resources = []
+                        choices = {}
+                        
+                        # Extract helpful resources
+                        for resource in question_response.get('Answer', {}).get('HelpfulResources', []):
+                            helpful_resources.append({
+                                'title': resource.get('DisplayText', ''),
+                                'url': resource.get('Url', '')
+                            })
+                        
+                        # Extract choices
+                        for choice in question_response.get('Answer', {}).get('Choices', []):
+                            choice_id = choice.get('ChoiceId')
+                            choice_title = choice.get('Title')
+                            if choice_id and choice_title:
+                                # Log the choice ID for debugging
+                                logger.debug(f"Found choice: {choice_id} for question {question_id}")
+                                choices[choice_id] = {
+                                    'title': choice_title,
+                                    'description': choice.get('Description', ''),
+                                    'resources': []  # Will store compliance resources for this choice
+                                }
+                        
+                        # Create the ordered ID (e.g., SEC01, REL02)
+                        ordered_id = f"{prefix}{question_idx:02d}"
+                        question_idx += 1
+                        
+                        # Extract the actual question ID part from the full ID
+                        # Example: security_01 -> extract "01"
+                        # Example: reliability_resiliency -> extract "resiliency"
+                        actual_id_parts = question_id.split('_')
+                        actual_question_id = actual_id_parts[-1] if len(actual_id_parts) > 1 else ""
+                        
+                        question_data[ordered_id] = {
+                            'title': question_title,
+                            'helpful_resources': helpful_resources,
+                            'choices': choices,
+                            'full_id': question_id,  # Store the original ID for reference
+                            'actual_id': actual_question_id  # Store the extracted actual ID part
+                        }
+                        logger.debug(f"Mapped ordered ID {ordered_id} to question {question_id} with actual_id {actual_question_id}")
+                        
+                    except Exception as e:
+                        logger.warning(f"Could not retrieve details for question {question_id}: {e}")
+                
+                logger.info(f"Mapped {question_idx-1} questions for pillar {pillar_id}")
+                
+            except Exception as e:
+                logger.error(f"Error getting question data for pillar {pillar_id}: {e}")
+    
+    except Exception as e:
+        logger.error(f"Error getting lens details: {e}")
+    
+    return question_data
