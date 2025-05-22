@@ -404,12 +404,19 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                     
                     if full_question_id:
                         # Try to get question details from the Well-Architected Tool
-                        question_details = get_question_details(workload_id, actual_question_id)
+                        question_details = get_question_details(workload_id, full_question_id)
                         logger.info(f"Got question details from the Well-Architected Tool API: {question_details}")
                         if question_details:
                             compliance_data[pillar_name][question_number]['title'] = question_details.get('title', compliance_data[pillar_name][question_number]['title'])
                             compliance_data[pillar_name][question_number]['helpful_resources'] = question_details.get('helpful_resources', [])
                             compliance_data[pillar_name][question_number]['full_id'] = full_question_id
+                            
+                            # Get Trusted Advisor check details
+                            ta_checks = get_trusted_advisor_checks(workload_id, full_question_id)
+                            compliance_data[pillar_name][question_number]['trusted_advisor_checks'] = ta_checks
+                            logger.info(f"Got {len(ta_checks)} Trusted Advisor checks for question {full_question_id}")
+                            for check in ta_checks:
+                                logger.debug(f"Trusted Advisor check: {check.get('name')} from {check.get('provider_name')}")
             
             # Get rule details including resources
             evaluation_results = get_rule_details(rule_name)
@@ -596,3 +603,38 @@ def lambda_handler(event, context):
                 'message': error_msg
             })
         }
+def get_trusted_advisor_checks(workload_id, question_id):
+    """
+    Get Trusted Advisor check details for a specific question ID.
+    
+    Args:
+        workload_id: The Well-Architected workload ID
+        question_id: The question ID to look up
+        
+    Returns:
+        List of Trusted Advisor check details
+    """
+    lens_alias = "wellarchitected"
+    
+    try:
+        # Get Trusted Advisor check details
+        response = wellarchitected_client.list_check_details(
+            WorkloadId=workload_id,
+            LensAlias=lens_alias,
+            QuestionId=question_id
+        )
+        
+        check_details = []
+        for check in response.get('CheckDetails', []):
+            check_details.append({
+                'name': check.get('Name', ''),
+                'description': check.get('Description', ''),
+                'provider': check.get('Provider', ''),
+                'provider_name': check.get('ProviderName', '')
+            })
+        
+        return check_details
+        
+    except Exception as e:
+        logger.warning(f"Could not retrieve Trusted Advisor check details for question {question_id}: {e}")
+        return []

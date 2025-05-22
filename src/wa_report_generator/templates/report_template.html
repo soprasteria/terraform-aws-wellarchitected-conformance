@@ -307,8 +307,30 @@
                 </div>
                 {% endif %}
                 
-                <!-- Config Rules and Resources -->
-                {% if question_data.config_rules and question_data.config_rules|length > 0 %}
+                <!-- Trusted Advisor Checks -->
+                {% if question_data.trusted_advisor_checks and question_data.trusted_advisor_checks|length > 0 %}
+                <div class="trusted-advisor">
+                    <h4>Trusted Advisor Checks:</h4>
+                    <table class="compact-table">
+                        <thead>
+                            <tr>
+                                <th>Check Name</th>
+                                <th>Provider</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for check in question_data.trusted_advisor_checks %}
+                                <tr>
+                                    <td>{{ check.name }}</td>
+                                    <td>{{ check.provider_name }}</td>
+                                    <td>{{ check.description }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
                     <h4>AWS Config Rules:</h4>
                     {% for rule_name, resources in question_data.config_rules.items() %}
                         <div class="config-rule-section">
@@ -362,4 +384,19 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+                <!-- Config Rules and Resources -->
+                {% if question_data.config_rules and question_data.config_rules|length > 0 %}
+        .trusted-advisor {
+            margin-top: 8px;
+            margin-bottom: 12px;
+            padding: 8px;
+            background-color: #fff8e6;
+            border-left: 3px solid #ff9900;
+        }
+        .trusted-advisor h4 {
+            margin-top: 0;
+            margin-bottom: 5px;
+            color: #ff9900;
+            font-size: 0.95em;
         }
