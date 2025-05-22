@@ -78,4 +78,3 @@ The Lambda function requires the following permissions:
 ## Deployment
 
 This Lambda function is deployed as part of the terraform-aws-wellarchitected-conformance module. See the [main README](../../README.md) for more information.
-
