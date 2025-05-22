@@ -27,6 +27,12 @@
             margin-top: 15px;
             color: #0066cc;
         }
+        h5 {
+            margin-top: 10px;
+            color: #333;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
         table {
             border-collapse: collapse;
             width: 100%;
@@ -112,26 +118,11 @@
             border-radius: 5px;
             background-color: #fafafa;
         }
-        .choice-section {
+        .config-rule-section {
             margin: 15px 0;
             padding: 10px;
             background-color: #f9f9f9;
             border-left: 3px solid #4CAF50;
-        }
-        .choice-title {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-        }
-        .choice-id {
-            font-weight: normal;
-            color: #666;
-            font-style: italic;
-        }
-        .choice-description {
-            font-style: italic;
-            color: #666;
-            margin-bottom: 10px;
         }
         .no-resources {
             font-style: italic;
@@ -141,11 +132,6 @@
             font-size: 0.9em;
             color: #666;
             font-style: italic;
-        }
-        .mapping-info {
-            margin: 5px 0;
-            font-size: 0.9em;
-            color: #666;
         }
         .helpful-resource {
             background-color: #f0f7ff;
@@ -236,8 +222,8 @@
         {% set compliant_count = namespace(value=0) %}
         {% set total_count = namespace(value=0) %}
         
-        {% for best_practice_id, best_practice_data in pillar_data.items() %}
-            {% for resource in best_practice_data.resources %}
+        {% for question_id, question_data in pillar_data.items() %}
+            {% for resource in question_data.resources %}
                 {% set total_count.value = total_count.value + 1 %}
                 {% if resource.compliance_status == 'COMPLIANT' %}
                     {% set compliant_count.value = compliant_count.value + 1 %}
@@ -273,18 +259,18 @@
             </div>
         </div>
         
-        {% for best_practice_id, best_practice_data in pillar_data.items() %}
+        {% for question_id, question_data in pillar_data.items() %}
             <div class="question-section">
                 <h3>
-                    <span class="question-id">{{ best_practice_id }}</span>: 
-                    <span class="question-title">{{ best_practice_data.title }}</span>
+                    <span class="question-id">{{ question_id }}</span>: 
+                    <span class="question-title">{{ question_data.title }}</span>
                 </h3>
                 
                 <!-- Helpful Resources -->
-                {% if best_practice_data.helpful_resources and best_practice_data.helpful_resources|length > 0 %}
+                {% if question_data.helpful_resources and question_data.helpful_resources|length > 0 %}
                 <div class="resources">
                     <h4>Helpful Resources:</h4>
-                    {% for resource in best_practice_data.helpful_resources %}
+                    {% for resource in question_data.helpful_resources %}
                         <div class="helpful-resource">
                             <div class="helpful-resource-title">{{ resource.title }}</div>
                             <div class="helpful-resource-url"><a href="{{ resource.url }}" target="_blank">{{ resource.url }}</a></div>
@@ -293,85 +279,36 @@
                 </div>
                 {% endif %}
                 
-                <!-- Choices with Resources -->
-                {% if best_practice_data.choices and best_practice_data.choices|length > 0 %}
-                    <h4>Best Practice Choices:</h4>
-                    {% for choice_id, choice_data in best_practice_data.choices.items() %}
-                        <div class="choice-section">
-                            <div class="choice-title">{{ choice_data.title }} <span class="choice-id">(ChoiceId: {{ choice_id }})</span></div>
-                            {% if choice_data.description %}
-                                <div class="choice-description">{{ choice_data.description }}</div>
-                            {% endif %}
-                            
-                            {% if choice_data.resources and choice_data.resources|length > 0 %}
-                                <h5>Compliance Results:</h5>
-                                <table>
-                                    <thead>
+                <!-- Config Rules and Resources -->
+                {% if question_data.config_rules and question_data.config_rules|length > 0 %}
+                    <h4>AWS Config Rules:</h4>
+                    {% for rule_name, resources in question_data.config_rules.items() %}
+                        <div class="config-rule-section">
+                            <h5>{{ rule_name }}</h5>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Resource Type</th>
+                                        <th>Resource ID</th>
+                                        <th>Compliance Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for resource in resources %}
                                         <tr>
-                                            <th>Resource Type</th>
-                                            <th>Resource ID</th>
-                                            <th>Compliance Status</th>
-                                            <th>Config Rule</th>
+                                            <td>{{ resource.resource_type }}</td>
+                                            <td>{{ resource.resource_id }}</td>
+                                            <td class="{{ 'compliant' if resource.compliance_status == 'COMPLIANT' else 'non-compliant' }}">
+                                                {{ resource.compliance_status }}
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for resource in choice_data.resources %}
-                                            <tr>
-                                                <td>{{ resource.resource_type }}</td>
-                                                <td>{{ resource.resource_id }}</td>
-                                                <td class="{{ 'compliant' if resource.compliance_status == 'COMPLIANT' else 'non-compliant' }}">
-                                                    {{ resource.compliance_status }}
-                                                </td>
-                                                <td>
-                                                    <div>{{ resource.rule_name }}</div>
-                                                    <div class="mapping-info">Mapping: {{ best_practice_id }}-{{ choice_id }}</div>
-                                                </td>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            {% else %}
-                                <p class="no-resources">No compliance data available for this choice.</p>
-                            {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
                     {% endfor %}
-                {% endif %}
-                
-                <!-- Resources Without Choice Mapping -->
-                {% set resources_without_choice = [] %}
-                {% for resource in best_practice_data.resources %}
-                    {% if not resource.choice_id %}
-                        {% set _ = resources_without_choice.append(resource) %}
-                    {% endif %}
-                {% endfor %}
-                
-                {% if resources_without_choice|length > 0 %}
-                    <h4>Resources Without Choice Mapping</h4>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Resource Type</th>
-                                <th>Resource ID</th>
-                                <th>Compliance Status</th>
-                                <th>Config Rule</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for resource in resources_without_choice %}
-                                <tr>
-                                    <td>{{ resource.resource_type }}</td>
-                                    <td>{{ resource.resource_id }}</td>
-                                    <td class="{{ 'compliant' if resource.compliance_status == 'COMPLIANT' else 'non-compliant' }}">
-                                        {{ resource.compliance_status }}
-                                    </td>
-                                    <td>
-                                        <div>{{ resource.rule_name }}</div>
-                                        <div class="mapping-info">No ChoiceId mapping found</div>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                {% else %}
+                    <p class="no-resources">No AWS Config rules detected for this question.</p>
                 {% endif %}
             </div>
         {% endfor %}
