@@ -61,6 +61,15 @@ module "lambda_function_wa_report_generator" {
         "kms:Decrypt"
       ],
       resources = [aws_kms_key.wa_reports_kms_key.arn]
+    },
+    # Add Well-Architected Tool permissions to retrieve question titles
+    wellarchitected = {
+      effect = "Allow",
+      actions = [
+        "wellarchitected:ListAnswers",
+        "wellarchitected:GetAnswer"
+      ],
+      resources = ["*"]
     }
   }
 
