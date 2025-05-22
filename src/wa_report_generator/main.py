@@ -157,112 +157,59 @@ def extract_question_id(rule_name):
         logger.warning(f"Error extracting QuestionId from rule name {rule_name}: {e}")
         return None, None
 
-def get_question_titles_and_choices(workload_id):
+def get_question_details(workload_id, question_id):
     """
-    Get question titles, choices, and helpful resources from the Well-Architected Tool API.
-    Uses export-lens API to get all questions from the wellarchitected lens.
+    Get question details from the Well-Architected Tool API for a specific question ID.
     
     Args:
         workload_id: The Well-Architected workload ID
+        question_id: The question ID to look up
         
     Returns:
-        Dictionary mapping ordered question IDs (e.g., SEC01) to their titles, choices, and helpful resources
+        Dictionary with question title and helpful resources, or None if not found
     """
-    question_data = {}
-    lens_alias = "wellarchitected"  # Focus only on wellarchitected lens
+    lens_alias = "wellarchitected"
     
     try:
-        # Get the lens details using export-lens API
-        lens_export = wellarchitected_client.export_lens(
+        # Get question details
+        question_response = wellarchitected_client.get_answer(
+            WorkloadId=workload_id,
             LensAlias=lens_alias,
-            LensVersion='latest'
+            QuestionId=question_id
         )
         
-        # Parse the lens JSON
-        lens_json = json.loads(lens_export.get('LensJSON', '{}'))
+        question_title = question_response.get('Answer', {}).get('QuestionTitle', '')
+        helpful_resources = []
+        choices = {}
         
-        # Get all pillars and their questions
-        pillars = {
-            'security': 'SEC',
-            'reliability': 'REL',
-            'costOptimization': 'COST'
+        # Extract helpful resources
+        for resource in question_response.get('Answer', {}).get('HelpfulResources', []):
+            helpful_resources.append({
+                'title': resource.get('DisplayText', ''),
+                'url': resource.get('Url', '')
+            })
+        
+        # Extract choices
+        for choice in question_response.get('Answer', {}).get('Choices', []):
+            choice_id = choice.get('ChoiceId')
+            choice_title = choice.get('Title')
+            if choice_id and choice_title:
+                choices[choice_id] = {
+                    'title': choice_title,
+                    'description': choice.get('Description', ''),
+                    'resources': []  # Will store compliance resources for this choice
+                }
+        
+        return {
+            'title': question_title,
+            'helpful_resources': helpful_resources,
+            'choices': choices,
+            'full_id': question_id
         }
         
-        # Process each pillar
-        for pillar_id, prefix in pillars.items():
-            try:
-                # Find the pillar in the lens JSON
-                pillar_data = None
-                for pillar in lens_json.get('pillars', []):
-                    if pillar.get('id') == pillar_id:
-                        pillar_data = pillar
-                        break
-                
-                if not pillar_data:
-                    logger.warning(f"Could not find pillar {pillar_id} in lens export")
-                    continue
-                
-                # Process each question in the pillar
-                question_idx = 1
-                for question in pillar_data.get('questions', []):
-                    question_id = question.get('id')
-                    question_title = question.get('title')
-                    
-                    if not question_id or not question_title:
-                        continue
-                    
-                    # Extract helpful resources
-                    helpful_resources = []
-                    for resource in question.get('helpfulResources', {}).get('content', []):
-                        helpful_resources.append({
-                            'title': resource.get('displayText', ''),
-                            'url': resource.get('url', '')
-                        })
-                    
-                    # Extract choices
-                    choices = {}
-                    for choice in question.get('choices', []):
-                        choice_id = choice.get('id')
-                        choice_title = choice.get('title')
-                        if choice_id and choice_title:
-                            choices[choice_id] = {
-                                'title': choice_title,
-                                'description': choice.get('description', ''),
-                                'resources': []  # Will store compliance resources for this choice
-                            }
-                    
-                    # Create the ordered ID (e.g., SEC01, REL02)
-                    ordered_id = f"{prefix}{question_idx:02d}"
-                    question_idx += 1
-                    
-                    # Extract the actual question ID part from the full ID
-                    # Example: security_01 -> extract "01"
-                    # Example: reliability_resiliency -> extract "resiliency"
-                    actual_id_parts = question_id.split('_')
-                    actual_question_id = actual_id_parts[-1] if len(actual_id_parts) > 1 else ""
-                    
-                    question_data[ordered_id] = {
-                        'title': question_title,
-                        'helpful_resources': helpful_resources,
-                        'choices': choices,
-                        'full_id': question_id,  # Store the original ID for reference
-                        'actual_id': actual_question_id  # Store the extracted actual ID part
-                    }
-                    logger.debug(f"Mapped ordered ID {ordered_id} to question {question_id} with actual_id {actual_question_id}")
-                
-                logger.info(f"Mapped {question_idx-1} questions for pillar {pillar_id}")
-                
-            except Exception as e:
-                logger.error(f"Error processing pillar {pillar_id}: {e}")
-    
     except Exception as e:
-        logger.error(f"Error exporting lens: {e}")
-        
-        # Fallback to using workload-specific API calls if export-lens fails
-        logger.info("Falling back to workload-specific API calls")
-        return get_question_titles_and_choices_fallback(workload_id)
-    
-    return question_data
+        logger.warning(f"Could not retrieve details for question {question_id}: {e}")
+        return None
 
 def get_question_titles_and_choices_fallback(workload_id):
     """
@@ -385,122 +332,108 @@ def map_best_practice_to_question(best_practice_id):
 def collect_compliance_data(conformance_packs, workload_id=None):
     """
     Collect compliance data from all conformance packs for HTML report generation.
-    Uses the Well-Architected lens as the source of truth for questionIds.
+    Uses AWS Config checks as the reference and looks up question details from the Well-Architected Tool.
     
     Args:
         conformance_packs: List of conformance pack names to process
-        workload_id: Well-Architected workload ID to retrieve question data
+        workload_id: Well-Architected workload ID to retrieve question details
         
     Returns:
         Dictionary with compliance data organized by pillar and question
     """
     compliance_data = {}
     
-    # First, get all questions from the Well-Architected lens
-    if not workload_id:
-        logger.warning("No workload_id provided, cannot retrieve Well-Architected questions")
-        return compliance_data
-        
-    try:
-        # Get all questions from the Well-Architected lens
-        question_data = get_question_titles_and_choices(workload_id)
-        logger.info(f"Retrieved data for {len(question_data)} questions from Well-Architected Tool")
-        
-        # Initialize the compliance data structure with all questions
-        for pillar_id, prefix in {'security': 'Security', 'reliability': 'Reliability', 'costOptimization': 'Cost Optimization'}.items():
-            compliance_data[prefix] = {}
-            
-            # Find all questions for this pillar
-            for question_id, question_info in question_data.items():
-                if question_id.startswith(pillar_id[:3].upper()):
-                    compliance_data[prefix][question_id] = {
-                        'title': question_info.get('title', f"Question {question_id}"),
-                        'helpful_resources': question_info.get('helpful_resources', []),
-                        'resources': [],
-                        'config_rules': {},
-                        'actual_question_id': question_info.get('actual_id', ''),  # Use the extracted actual ID
-                        'full_id': question_info.get('full_id', '')  # Store the full ID for reference
-                    }
-        
-        # Now process AWS Config rules and add compliance data to matching questions
-        for conformance_pack_name in conformance_packs:
-            # Extract pillar name for this conformance pack
-            pillar_name = None
-            for prefix, pillar_id in PILLAR_MAPPING.items():
-                if prefix in conformance_pack_name:
-                    if pillar_id == 'security':
-                        pillar_name = 'Security'
-                    elif pillar_id == 'reliability':
-                        pillar_name = 'Reliability'
-                    elif pillar_id == 'costOptimization':
-                        pillar_name = 'Cost Optimization'
-                    break
-            
-            if not pillar_name:
-                logger.warning(f"Could not determine pillar name for conformance pack: {conformance_pack_name}")
-                continue
-                
-            # Get conformance pack rules
-            rules = get_conformance_pack_details(conformance_pack_name)
-            
-            for rule in rules:
-                rule_name = rule.get('ConfigRuleName')
-                
-                # Extract question number and actual question ID from rule name
-                question_number, actual_question_id = extract_question_id(rule_name)
-                
-                if not question_number:
-                    logger.warning(f"Could not extract question number from rule name: {rule_name}")
-                    continue
-                    
-                # Find the matching question in our compliance data
-                matched = False
-                
-                # First try to match by actual_question_id if available
-                if actual_question_id:
-                    for q_id, q_data in compliance_data[pillar_name].items():
-                        if q_data.get('actual_question_id') == actual_question_id:
-                            # Found a match by actual_question_id
-                            matched = True
-                            question_number = q_id
-                            logger.debug(f"Matched rule {rule_name} to question {q_id} by actual_question_id={actual_question_id}")
-                            break
-                
-                # If no match by actual_question_id, try direct question_number match
-                if not matched and question_number in compliance_data[pillar_name]:
-                    matched = True
-                    logger.debug(f"Matched rule {rule_name} to question {question_number} by direct question number")
-                
-                if matched:
-                    # Get rule details including resources
-                    evaluation_results = get_rule_details(rule_name)
-                    
-                    for result in evaluation_results:
-                        resource_type = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceType')
-                        resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
-                        resource_compliance = result.get('ComplianceType')
-                        
-                        resource_data = {
-                            'resource_type': resource_type,
-                            'resource_id': resource_id,
-                            'compliance_status': resource_compliance,
-                            'rule_name': rule_name,
-                            'actual_question_id': actual_question_id
-                        }
-                        
-                        # Add resource to the main resources list
-                        compliance_data[pillar_name][question_number]['resources'].append(resource_data)
-                        
-                        # Track this config rule
-                        if rule_name not in compliance_data[pillar_name][question_number]['config_rules']:
-                            compliance_data[pillar_name][question_number]['config_rules'][rule_name] = []
-                        
-                        compliance_data[pillar_name][question_number]['config_rules'][rule_name].append(resource_data)
-                else:
-                    logger.warning(f"No matching question found for {question_number} in pillar {pillar_name}")
+    # Initialize pillar data
+    for pillar_name in ['Security', 'Reliability', 'Cost Optimization']:
+        compliance_data[pillar_name] = {}
     
-    except Exception as e:
-        logger.error(f"Error collecting compliance data: {e}")
+    # Process each conformance pack
+    for conformance_pack_name in conformance_packs:
+        # Extract pillar name for this conformance pack
+        pillar_name = None
+        for prefix, pillar_id in PILLAR_MAPPING.items():
+            if prefix in conformance_pack_name:
+                if pillar_id == 'security':
+                    pillar_name = 'Security'
+                elif pillar_id == 'reliability':
+                    pillar_name = 'Reliability'
+                elif pillar_id == 'costOptimization':
+                    pillar_name = 'Cost Optimization'
+                break
+        
+        if not pillar_name:
+            logger.warning(f"Could not determine pillar name for conformance pack: {conformance_pack_name}")
+            continue
+            
+        # Get conformance pack rules
+        rules = get_conformance_pack_details(conformance_pack_name)
+        
+        # Process each rule
+        for rule in rules:
+            rule_name = rule.get('ConfigRuleName')
+            
+            # Extract question number and actual question ID from rule name
+            question_number, actual_question_id = extract_question_id(rule_name)
+            
+            if not question_number:
+                logger.warning(f"Could not extract question number from rule name: {rule_name}")
+                continue
+            
+            # Use question_number as the key in our data structure
+            if question_number not in compliance_data[pillar_name]:
+                # Initialize with basic information
+                compliance_data[pillar_name][question_number] = {
+                    'title': f"Best Practice {question_number}",
+                    'helpful_resources': [],
+                    'resources': [],
+                    'config_rules': {},
+                    'actual_question_id': actual_question_id
+                }
+                
+                # If we have a workload_id and actual_question_id, try to get question details
+                if workload_id and actual_question_id:
+                    # Construct the full question ID based on pillar
+                    if pillar_name == 'Security':
+                        full_question_id = f"security_{actual_question_id}"
+                    elif pillar_name == 'Reliability':
+                        full_question_id = f"reliability_{actual_question_id}"
+                    elif pillar_name == 'Cost Optimization':
+                        full_question_id = f"costOptimization_{actual_question_id}"
+                    else:
+                        full_question_id = None
+                    
+                    if full_question_id:
+                        # Try to get question details from the Well-Architected Tool
+                        question_details = get_question_details(workload_id, full_question_id)
+                        if question_details:
+                            compliance_data[pillar_name][question_number]['title'] = question_details.get('title', compliance_data[pillar_name][question_number]['title'])
+                            compliance_data[pillar_name][question_number]['helpful_resources'] = question_details.get('helpful_resources', [])
+                            compliance_data[pillar_name][question_number]['full_id'] = full_question_id
+            
+            # Get rule details including resources
+            evaluation_results = get_rule_details(rule_name)
+            
+            for result in evaluation_results:
+                resource_type = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceType')
+                resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
+                resource_compliance = result.get('ComplianceType')
+                
+                resource_data = {
+                    'resource_type': resource_type,
+                    'resource_id': resource_id,
+                    'compliance_status': resource_compliance,
+                    'rule_name': rule_name,
+                    'actual_question_id': actual_question_id
+                }
+                
+                # Add resource to the main resources list
+                compliance_data[pillar_name][question_number]['resources'].append(resource_data)
+                
+                # Track this config rule
+                if rule_name not in compliance_data[pillar_name][question_number]['config_rules']:
+                    compliance_data[pillar_name][question_number]['config_rules'][rule_name] = []
+                
+                compliance_data[pillar_name][question_number]['config_rules'][rule_name].append(resource_data)
     
     return compliance_data
 
@@ -606,18 +539,31 @@ def lambda_handler(event, context):
         }
 
     # Process each conformance pack
-    conformance_packs = [
-        SECURITY_CONFORMANCE_PACK,
-        RELIABILITY_CONFORMANCE_PACK,
-        COST_OPTIMIZATION_CONFORMANCE_PACK
-    ]
+    conformance_packs = []
+    if SECURITY_CONFORMANCE_PACK:
+        conformance_packs.append(SECURITY_CONFORMANCE_PACK)
+    if RELIABILITY_CONFORMANCE_PACK:
+        conformance_packs.append(RELIABILITY_CONFORMANCE_PACK)
+    if COST_OPTIMIZATION_CONFORMANCE_PACK:
+        conformance_packs.append(COST_OPTIMIZATION_CONFORMANCE_PACK)
+    
+    if not conformance_packs:
+        error_msg = "No conformance packs specified in environment variables"
+        logger.error(error_msg)
+        return {
+            'statusCode': 400,
+            'body': json.dumps({
+                'status': 'error',
+                'message': error_msg
+            })
+        }
 
     try:
         # Get AWS account ID and region
         account_id = sts_client.get_caller_identity()['Account']
         region = boto3.session.Session().region_name
         
-        # Collect compliance data with question titles if workload_id is provided
+        # Collect compliance data with question details if workload_id is provided
         logger.info("Collecting compliance data from AWS Config")
         compliance_data = collect_compliance_data(conformance_packs, workload_id)
         
