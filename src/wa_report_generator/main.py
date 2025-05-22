@@ -146,11 +146,11 @@ def extract_question_id(rule_name):
         
         if id_match:
             actual_question_id = id_match.group(1)
-            logger.debug(f"Extracted question_number={question_number}, actual_question_id={actual_question_id} from rule_name={rule_name}")
+            logger.info(f"Extracted question_number={question_number}, actual_question_id={actual_question_id} from rule_name={rule_name}")
             return question_number, actual_question_id
         
         # If we couldn't extract the actual questionId, just return the question number
-        logger.debug(f"Extracted question_number={question_number}, but couldn't extract actual_question_id from rule_name={rule_name}")
+        logger.info(f"Extracted question_number={question_number}, but couldn't extract actual_question_id from rule_name={rule_name}")
         return question_number, None
             
     except Exception as e:
@@ -248,7 +248,7 @@ def get_question_titles_and_choices(workload_id):
                             'full_id': question_id,  # Store the original ID for reference
                             'actual_id': actual_question_id  # Store the extracted actual ID part
                         }
-                        logger.debug(f"Mapped ordered ID {ordered_id} to question {question_id} with actual_id {actual_question_id}")
+                        logger.info(f"Mapped ordered ID {ordered_id} to question {question_id} with actual_id {actual_question_id}")
                         
                     except Exception as e:
                         logger.warning(f"Could not retrieve details for question {question_id}: {e}")
@@ -357,13 +357,13 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                             # Found a match by actual_question_id
                             matched = True
                             question_number = q_id
-                            logger.debug(f"Matched rule {rule_name} to question {q_id} by actual_question_id={actual_question_id}")
+                            logger.info(f"Matched rule {rule_name} to question {q_id} by actual_question_id={actual_question_id}")
                             break
                 
                 # If no match by actual_question_id, try direct question_number match
                 if not matched and question_number in compliance_data[pillar_name]:
                     matched = True
-                    logger.debug(f"Matched rule {rule_name} to question {question_number} by direct question number")
+                    logger.info(f"Matched rule {rule_name} to question {question_number} by direct question number")
                 
                 if matched:
                     # Get rule details including resources
