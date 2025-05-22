@@ -67,7 +67,9 @@ module "lambda_function_wa_report_generator" {
       effect = "Allow",
       actions = [
         "wellarchitected:ListAnswers",
-        "wellarchitected:GetAnswer"
+        "wellarchitected:GetAnswer",
+        "wellarchitected:GetLens",
+        "wellarchitected:ListLensReviewImprovements"
       ],
       resources = ["*"]
     }

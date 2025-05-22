@@ -160,12 +160,6 @@ def get_question_titles_and_choices(workload_id):
     lens_alias = "wellarchitected"  # Focus only on wellarchitected lens
     
     try:
-        # First, get the lens version
-        lens_response = wellarchitected_client.get_lens(
-            LensAlias=lens_alias
-        )
-        lens_version = lens_response.get('Lens', {}).get('LensVersion')
-        
         # Get all pillars and their questions
         pillars = {
             'security': 'SEC',
