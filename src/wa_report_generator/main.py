@@ -120,7 +120,7 @@ def extract_question_id(rule_name):
     Format: QuestionNumber-ActualQuestionId_bp_name-of-check
     Examples: 
     - SEC05-network-protection_bp_vpc-default-security-group-closed-conformance-pack-qk5aog3dr
-    - COST01-cloud-financial-management_bp_aws-budgets-conformance-pack-zg7bakjef
+    - cost01-cloud-financial-management_bp_aws-budgets-conformance-pack-zg7bakjef
     - REL09-backing-up-data_bp_backup-plan-min-frequency-and-min-retention-check-conformance-pack-qyaut3rcc
     
     Args:
@@ -130,9 +130,10 @@ def extract_question_id(rule_name):
         Tuple of (question_number, actual_question_id) or (question_number, None) if actual_question_id not found
     """
     try:
-        # First extract the question number (e.g., SEC05, REL09)
+        # First extract the question number (e.g., SEC05, REL09, cost01)
+        # Handle both uppercase and lowercase prefixes
         number_pattern = r'([A-Za-z]{3,4}\d{2})'
-        number_match = re.search(number_pattern, rule_name)
+        number_match = re.search(number_pattern, rule_name, re.IGNORECASE)
         
         if not number_match:
             logger.info(f"No question number found for rule_name={rule_name}")
@@ -141,8 +142,15 @@ def extract_question_id(rule_name):
         question_number = number_match.group(1).upper()  # Convert to uppercase for consistency
         
         # Then extract the actual questionId (e.g., network-protection, backing-up-data)
+        # First try with the uppercase version
         id_pattern = f"{question_number}-([a-z0-9-]+)(?:_bp|_)"
         id_match = re.search(id_pattern, rule_name)
+        
+        if not id_match:
+            # If that doesn't work, try with the lowercase version
+            lowercase_question = question_number.lower()
+            id_pattern = f"{lowercase_question}-([a-z0-9-]+)(?:_bp|_)"
+            id_match = re.search(id_pattern, rule_name)
         
         if id_match:
             actual_question_id = id_match.group(1)
