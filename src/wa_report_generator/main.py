@@ -23,6 +23,7 @@ import json
 import logging
 import os
 import pytz
+import re
 from datetime import datetime
 from botocore.exceptions import ClientError
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -112,17 +113,17 @@ def get_rule_details(rule_name):
         logger.error(f"Error getting rule details: {e}")
         return []
 
-def get_question_titles(workload_id):
+def get_question_titles_and_choices(workload_id):
     """
-    Get question titles from the Well-Architected Tool API.
+    Get question titles, choices, and helpful resources from the Well-Architected Tool API.
     
     Args:
         workload_id: The Well-Architected workload ID
         
     Returns:
-        Dictionary mapping question IDs to their titles
+        Dictionary mapping question IDs to their titles, choices, and helpful resources
     """
-    question_titles = {}
+    question_data = {}
     lens_alias = "wellarchitected"
     
     # Process each pillar
@@ -136,21 +137,66 @@ def get_question_titles(workload_id):
                 MaxResults=50
             )
             
-            # Extract question titles
+            # Extract question titles and helpful resources
             for question in response.get('AnswerSummaries', []):
                 question_id = question.get('QuestionId')
                 question_title = question.get('QuestionTitle')
+                helpful_resources = []
+                choices = {}
+                
+                # Try to get helpful resources and choices if available
+                try:
+                    answer_response = wellarchitected_client.get_answer(
+                        WorkloadId=workload_id,
+                        LensAlias=lens_alias,
+                        QuestionId=question_id
+                    )
+                    
+                    # Extract helpful resources
+                    for resource in answer_response.get('Answer', {}).get('HelpfulResources', []):
+                        helpful_resources.append({
+                            'title': resource.get('DisplayText', ''),
+                            'url': resource.get('Url', '')
+                        })
+                    
+                    # Extract choices
+                    for choice in answer_response.get('Answer', {}).get('Choices', []):
+                        choice_id = choice.get('ChoiceId')
+                        choice_title = choice.get('Title')
+                        if choice_id and choice_title:
+                            choices[choice_id] = {
+                                'title': choice_title,
+                                'description': choice.get('Description', ''),
+                                'resources': []  # Will store compliance resources for this choice
+                            }
+                except Exception as e:
+                    logger.warning(f"Could not retrieve details for question {question_id}: {e}")
                 
                 if question_id and question_title:
-                    question_titles[question_id] = question_title
-                    logger.debug(f"Found title for question {question_id}: {question_title}")
+                    # Extract the short question ID (e.g., SEC01) from the full ID
+                    short_id = None
+                    if question_id.startswith('security_'):
+                        short_id = 'SEC' + question_id[9:11]
+                    elif question_id.startswith('reliability_'):
+                        short_id = 'REL' + question_id[12:14]
+                    elif question_id.startswith('costOptimization_'):
+                        short_id = 'COST' + question_id[17:19]
+                    
+                    if short_id:
+                        question_data[short_id] = {
+                            'title': question_title,
+                            'helpful_resources': helpful_resources,
+                            'choices': choices,
+                            'full_id': question_id
+                        }
+                        logger.debug(f"Found data for question {short_id}: {question_title} with {len(helpful_resources)} helpful resources and {len(choices)} choices")
             
-            logger.info(f"Retrieved {len(response.get('AnswerSummaries', []))} question titles for pillar {pillar_id}")
+            logger.info(f"Retrieved {len(response.get('AnswerSummaries', []))} questions for pillar {pillar_id}")
             
         except Exception as e:
-            logger.error(f"Error getting question titles for pillar {pillar_id}: {e}")
+            logger.error(f"Error getting question data for pillar {pillar_id}: {e}")
     
-    return question_titles
+    return question_data
 
 def map_best_practice_to_question(best_practice_id):
     """
@@ -197,14 +243,14 @@ def collect_compliance_data(conformance_packs, workload_id=None):
     """
     compliance_data = {}
     
-    # Get question titles if workload_id is provided
-    question_titles = {}
+    # Get question titles, choices, and helpful resources if workload_id is provided
+    question_data = {}
     if workload_id:
         try:
-            question_titles = get_question_titles(workload_id)
-            logger.info(f"Retrieved {len(question_titles)} question titles from Well-Architected Tool")
+            question_data = get_question_titles_and_choices(workload_id)
+            logger.info(f"Retrieved data for {len(question_data)} questions from Well-Architected Tool")
         except Exception as e:
-            logger.error(f"Error retrieving question titles: {e}")
+            logger.error(f"Error retrieving question data: {e}")
     
     for conformance_pack_name in conformance_packs:
         # Extract pillar name for this conformance pack
@@ -234,35 +280,42 @@ def collect_compliance_data(conformance_packs, workload_id=None):
             rule_name = rule.get('ConfigRuleName')
             compliance_type = rule.get('Compliance', {}).get('ComplianceType')
             
-            # Extract best practice ID from rule name (e.g., SEC01, REL02)
-            best_practice_id = None
-            for prefix in ['SEC', 'REL', 'COST']:
-                if prefix in rule_name:
-                    # Find the position of the prefix
-                    idx = rule_name.find(prefix)
-                    # Extract the prefix and the following digits
-                    potential_id = rule_name[idx:idx+5]  # Assuming format like SEC01
-                    if potential_id[3:].isdigit():
-                        best_practice_id = potential_id
-                        break
+            # Extract best practice ID and choice ID from rule name
+            best_practice_id, choice_id = extract_choice_id(rule_name)
+            
+            if not best_practice_id:
+                # Fallback to extracting just the best practice ID
+                for prefix in ['SEC', 'REL', 'COST']:
+                    if prefix in rule_name:
+                        # Find the position of the prefix
+                        idx = rule_name.find(prefix)
+                        # Extract the prefix and the following digits
+                        potential_id = rule_name[idx:idx+5]  # Assuming format like SEC01
+                        if potential_id[3:].isdigit():
+                            best_practice_id = potential_id
+                            break
             
             if not best_practice_id:
                 logger.warning(f"Could not extract best practice ID from rule name: {rule_name}")
                 continue
                 
-            # Try to find a matching question title
+            # Try to find matching question data
             title = f"Best Practice {best_practice_id}"
+            helpful_resources = []
+            choices = {}
             
-            # Map best practice ID to question ID and look up title
-            question_id = map_best_practice_to_question(best_practice_id)
-            if question_id and question_id in question_titles:
-                title = question_titles[question_id]
-                logger.debug(f"Found title for {best_practice_id}: {title}")
+            if best_practice_id in question_data:
+                title = question_data[best_practice_id].get('title', title)
+                helpful_resources = question_data[best_practice_id].get('helpful_resources', [])
+                choices = question_data[best_practice_id].get('choices', {})
+                logger.debug(f"Found data for {best_practice_id}: {title} with {len(helpful_resources)} helpful resources and {len(choices)} choices")
             
             # Initialize best practice data if not exists
             if best_practice_id not in compliance_data[pillar_name]:
                 compliance_data[pillar_name][best_practice_id] = {
                     'title': title,
+                    'helpful_resources': helpful_resources,
+                    'choices': choices,
                     'resources': []
                 }
                 
@@ -274,11 +327,20 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                 resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
                 resource_compliance = result.get('ComplianceType')
                 
-                compliance_data[pillar_name][best_practice_id]['resources'].append({
+                resource_data = {
                     'resource_type': resource_type,
                     'resource_id': resource_id,
-                    'compliance_status': resource_compliance
-                })
+                    'compliance_status': resource_compliance,
+                    'rule_name': rule_name,
+                    'choice_id': choice_id
+                }
+                
+                # Add resource to the main resources list
+                compliance_data[pillar_name][best_practice_id]['resources'].append(resource_data)
+                
+                # If we have a choice_id, also add to the specific choice
+                if choice_id and choice_id in compliance_data[pillar_name][best_practice_id]['choices']:
+                    compliance_data[pillar_name][best_practice_id]['choices'][choice_id]['resources'].append(resource_data)
     
     return compliance_data
 
@@ -745,3 +807,31 @@ def lambda_handler(event, context):
                 'message': error_msg
             })
         }
+def extract_choice_id(rule_name):
+    """
+    Extract ChoiceId from an AWS Config rule name.
+    
+    Format: QuestionId-ChoiceId_bp_name-of-check
+    Example: SEC05-network-protection_bp_vpc-default-security-group-closed-conformance-pack-qk5aog3dr
+    
+    Args:
+        rule_name: The AWS Config rule name
+        
+    Returns:
+        Tuple of (question_id, choice_id) or (None, None) if not found
+    """
+    try:
+        # Look for patterns like SEC05-network-protection or REL02-resiliency-strategy
+        pattern = r'([A-Z]{3}\d{2})-([a-z-]+)_bp'
+        match = re.search(pattern, rule_name)
+        
+        if match:
+            question_id = match.group(1)  # e.g., SEC05
+            choice_id = match.group(2)    # e.g., network-protection
+            return question_id, choice_id
+            
+        # Fallback for older naming patterns
+        return None, None
+    except Exception as e:
+        logger.warning(f"Error extracting ChoiceId from rule name {rule_name}: {e}")
+        return None, None

@@ -23,6 +23,10 @@
         h3 {
             margin-top: 20px;
         }
+        h4 {
+            margin-top: 15px;
+            color: #0066cc;
+        }
         table {
             border-collapse: collapse;
             width: 100%;
@@ -72,6 +76,52 @@
             line-height: 20px;
             color: white;
         }
+        .resources {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f0f7ff;
+            border-left: 3px solid #0066cc;
+        }
+        .resources h4 {
+            margin-top: 0;
+            color: #0066cc;
+        }
+        .resources ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .resources li {
+            margin-bottom: 5px;
+        }
+        .question-title {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .question-id {
+            font-weight: bold;
+            color: #0066cc;
+        }
+        .choice-section {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-left: 3px solid #4CAF50;
+        }
+        .choice-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .choice-description {
+            font-style: italic;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .no-resources {
+            font-style: italic;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -113,27 +163,86 @@
         
         {% for best_practice_id, best_practice_data in pillar_data.items() %}
             {% if best_practice_data.resources %}
-                <h3>{{ best_practice_id }}: {{ best_practice_data.title }}</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Resource Type</th>
-                            <th>Resource ID</th>
-                            <th>Compliance Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for resource in best_practice_data.resources %}
-                            <tr>
-                                <td>{{ resource.resource_type }}</td>
-                                <td>{{ resource.resource_id }}</td>
-                                <td class="{{ 'compliant' if resource.compliance_status == 'COMPLIANT' else 'non-compliant' }}">
-                                    {{ resource.compliance_status }}
-                                </td>
-                            </tr>
+                <h3>
+                    <span class="question-id">{{ best_practice_id }}</span>: 
+                    <span class="question-title">{{ best_practice_data.title }}</span>
+                </h3>
+                
+                {% if best_practice_data.helpful_resources and best_practice_data.helpful_resources|length > 0 %}
+                <div class="resources">
+                    <h4>Helpful Resources:</h4>
+                    <ul>
+                        {% for resource in best_practice_data.helpful_resources %}
+                            <li><a href="{{ resource.url }}" target="_blank">{{ resource.title }}</a></li>
                         {% endfor %}
-                    </tbody>
-                </table>
+                    </ul>
+                </div>
+                {% endif %}
+                
+                {% if best_practice_data.choices and best_practice_data.choices|length > 0 %}
+                    {% for choice_id, choice_data in best_practice_data.choices.items() %}
+                        {% if choice_data.resources and choice_data.resources|length > 0 %}
+                            <div class="choice-section">
+                                <div class="choice-title">{{ choice_data.title }}</div>
+                                {% if choice_data.description %}
+                                    <div class="choice-description">{{ choice_data.description }}</div>
+                                {% endif %}
+                                
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Resource Type</th>
+                                            <th>Resource ID</th>
+                                            <th>Compliance Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for resource in choice_data.resources %}
+                                            <tr>
+                                                <td>{{ resource.resource_type }}</td>
+                                                <td>{{ resource.resource_id }}</td>
+                                                <td class="{{ 'compliant' if resource.compliance_status == 'COMPLIANT' else 'non-compliant' }}">
+                                                    {{ resource.compliance_status }}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+                
+                {% set resources_without_choice = [] %}
+                {% for resource in best_practice_data.resources %}
+                    {% if not resource.choice_id %}
+                        {% set _ = resources_without_choice.append(resource) %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if resources_without_choice|length > 0 %}
+                    <h4>Other Resources</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Resource Type</th>
+                                <th>Resource ID</th>
+                                <th>Compliance Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for resource in resources_without_choice %}
+                                <tr>
+                                    <td>{{ resource.resource_type }}</td>
+                                    <td>{{ resource.resource_id }}</td>
+                                    <td class="{{ 'compliant' if resource.compliance_status == 'COMPLIANT' else 'non-compliant' }}">
+                                        {{ resource.compliance_status }}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
             {% endif %}
         {% endfor %}
     </div>
