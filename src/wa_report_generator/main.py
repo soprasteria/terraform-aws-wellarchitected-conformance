@@ -187,6 +187,8 @@ def get_question_titles_and_choices(workload_id):
                             choice_id = choice.get('ChoiceId')
                             choice_title = choice.get('Title')
                             if choice_id and choice_title:
+                                # Log the choice ID for debugging
+                                logger.debug(f"Found choice: {choice_id} for question {question_id}")
                                 choices[choice_id] = {
                                     'title': choice_title,
                                     'description': choice.get('Description', ''),
@@ -203,7 +205,7 @@ def get_question_titles_and_choices(workload_id):
                             'choices': choices,
                             'full_id': question_id  # Store the original ID for reference
                         }
-                        logger.debug(f"Mapped ordered ID {ordered_id} to question {question_id}: {question_title}")
+                        logger.debug(f"Mapped ordered ID {ordered_id} to question {question_id}: {question_title} with {len(choices)} choices")
                         
                     except Exception as e:
                         logger.warning(f"Could not retrieve details for question {question_id}: {e}")
@@ -250,6 +252,11 @@ def collect_compliance_data(conformance_packs, workload_id=None):
         try:
             question_data = get_question_titles_and_choices(workload_id)
             logger.info(f"Retrieved data for {len(question_data)} questions from Well-Architected Tool")
+            
+            # Log all choices for debugging
+            for question_id, question_info in question_data.items():
+                for choice_id in question_info.get('choices', {}):
+                    logger.debug(f"Question {question_id} has choice {choice_id}")
         except Exception as e:
             logger.error(f"Error retrieving question data: {e}")
     
@@ -341,7 +348,10 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                 
                 # If we have a choice_id, also add to the specific choice
                 if choice_id and choice_id in compliance_data[pillar_name][best_practice_id]['choices']:
+                    logger.debug(f"Adding resource to choice {choice_id} for question {best_practice_id}")
                     compliance_data[pillar_name][best_practice_id]['choices'][choice_id]['resources'].append(resource_data)
+                elif choice_id:
+                    logger.debug(f"Choice {choice_id} not found in question {best_practice_id} choices: {list(compliance_data[pillar_name][best_practice_id]['choices'].keys())}")
     
     return compliance_data
 
@@ -823,15 +833,17 @@ def extract_choice_id(rule_name):
     """
     try:
         # Look for patterns like SEC05-network-protection or REL02-resiliency-strategy
-        pattern = r'([A-Z]{3}\d{2})-([a-z-]+)_bp'
+        pattern = r'([A-Z]{3}\d{2})-([a-z-]+)(?:_bp|_)'
         match = re.search(pattern, rule_name)
         
         if match:
             question_id = match.group(1)  # e.g., SEC05
             choice_id = match.group(2)    # e.g., network-protection
+            logger.debug(f"Extracted question_id={question_id}, choice_id={choice_id} from rule_name={rule_name}")
             return question_id, choice_id
             
         # Fallback for older naming patterns
+        logger.debug(f"No match found for rule_name={rule_name} using pattern {pattern}")
         return None, None
     except Exception as e:
         logger.warning(f"Error extracting ChoiceId from rule name {rule_name}: {e}")
