@@ -313,28 +313,32 @@
                 {% endif %}
                 
                 <!-- Trusted Advisor Checks -->
-                {% if question_data.trusted_advisor_checks and question_data.trusted_advisor_checks|length > 0 %}
-                <div class="trusted-advisor">
-                    <h4>Trusted Advisor Checks:</h4>
-                    <table class="compact-table">
-                        <thead>
-                            <tr>
-                                <th>Check Name</th>
-                                <th>Provider</th>
-                                <th>Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for check in question_data.trusted_advisor_checks %}
-                                <tr>
-                                    <td>{{ check.name }}</td>
-                                    <td>{{ check.provider_name }}</td>
-                                    <td>{{ check.description }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                {% if question_data.choices %}
+                    {% for choice_id, choice_data in question_data.choices.items() %}
+                        {% if choice_data.trusted_advisor_checks and choice_data.trusted_advisor_checks|length > 0 %}
+                            <div class="trusted-advisor">
+                                <h4>Trusted Advisor Checks for {{ choice_data.title }}:</h4>
+                                <table class="compact-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Check Name</th>
+                                            <th>Provider</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for check in choice_data.trusted_advisor_checks %}
+                                            <tr>
+                                                <td>{{ check.name }}</td>
+                                                <td>{{ check.provider_name }}</td>
+                                                <td>{{ check.description }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
                 {% endif %}
                 
                 <!-- Config Rules and Resources -->

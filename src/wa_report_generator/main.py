@@ -171,6 +171,12 @@ def get_question_details(workload_id, question_id):
     lens_alias = "wellarchitected"
     
     try:
+        # Get lens ARN
+        lens_response = wellarchitected_client.get_lens(
+            LensAlias=lens_alias
+        )
+        lens_arn = lens_response.get('Lens', {}).get('Arn')
+        
         # Get question details
         question_response = wellarchitected_client.get_answer(
             WorkloadId=workload_id,
@@ -183,6 +189,15 @@ def get_question_details(workload_id, question_id):
         choices = {}
         description = question_response.get('Answer', {}).get('QuestionDescription', '')
         
+        # Extract pillar ID from question ID
+        pillar_id = None
+        if question_id.startswith('security_'):
+            pillar_id = 'security'
+        elif question_id.startswith('reliability_'):
+            pillar_id = 'reliability'
+        elif question_id.startswith('costOptimization_'):
+            pillar_id = 'costOptimization'
+        
         # Extract helpful resources
         for resource in question_response.get('Answer', {}).get('HelpfulResources', []):
             helpful_resources.append({
@@ -190,15 +205,19 @@ def get_question_details(workload_id, question_id):
                 'url': resource.get('Url', '')
             })
         
-        # Extract choices
+        # Extract choices and get Trusted Advisor checks for each choice
         for choice in question_response.get('Answer', {}).get('Choices', []):
             choice_id = choice.get('ChoiceId')
             choice_title = choice.get('Title')
-            if choice_id and choice_title:
+            if choice_id and choice_title and pillar_id and lens_arn:
+                # Get Trusted Advisor checks for this choice
+                ta_checks = get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, choice_id)
+                
                 choices[choice_id] = {
                     'title': choice_title,
                     'description': choice.get('Description', ''),
-                    'resources': []  # Will store compliance resources for this choice
+                    'resources': [],  # Will store compliance resources for this choice
+                    'trusted_advisor_checks': ta_checks
                 }
         
         return {
@@ -206,7 +225,9 @@ def get_question_details(workload_id, question_id):
             'description': description,
             'helpful_resources': helpful_resources,
             'choices': choices,
-            'full_id': question_id
+            'full_id': question_id,
+            'pillar_id': pillar_id,
+            'lens_arn': lens_arn
         }
         
     except Exception as e:
@@ -414,13 +435,7 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                             compliance_data[pillar_name][question_number]['description'] = question_details.get('description', '')
                             compliance_data[pillar_name][question_number]['helpful_resources'] = question_details.get('helpful_resources', [])
                             compliance_data[pillar_name][question_number]['full_id'] = full_question_id
-                            
-                            # Get Trusted Advisor check details
-                            ta_checks = get_trusted_advisor_checks(workload_id, full_question_id)
-                            compliance_data[pillar_name][question_number]['trusted_advisor_checks'] = ta_checks
-                            logger.info(f"Got {len(ta_checks)} Trusted Advisor checks for question {full_question_id}")
-                            for check in ta_checks:
-                                logger.debug(f"Trusted Advisor check: {check.get('name')} from {check.get('provider_name')}")
+                            compliance_data[pillar_name][question_number]['choices'] = question_details.get('choices', {})
             
             # Get rule details including resources
             evaluation_results = get_rule_details(rule_name)
@@ -607,25 +622,26 @@ def lambda_handler(event, context):
                 'message': error_msg
             })
         }
-def get_trusted_advisor_checks(workload_id, question_id):
+def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, choice_id):
     """
-    Get Trusted Advisor check details for a specific question ID.
+    Get Trusted Advisor check details for a specific pillar and choice.
     
     Args:
         workload_id: The Well-Architected workload ID
-        question_id: The question ID to look up
+        lens_arn: The ARN of the lens
+        pillar_id: The ID of the pillar
+        choice_id: The ID of the choice
         
     Returns:
         List of Trusted Advisor check details
     """
-    lens_alias = "wellarchitected"
-    
     try:
         # Get Trusted Advisor check details
         response = wellarchitected_client.list_check_details(
             WorkloadId=workload_id,
-            LensAlias=lens_alias,
-            QuestionId=question_id
+            LensArn=lens_arn,
+            PillarId=pillar_id,
+            ChoiceId=choice_id
         )
         
         check_details = []
@@ -640,5 +656,5 @@ def get_trusted_advisor_checks(workload_id, question_id):
         return check_details
         
     except Exception as e:
-        logger.warning(f"Could not retrieve Trusted Advisor check details for question {question_id}: {e}")
+        logger.warning(f"Could not retrieve Trusted Advisor check details for pillar {pillar_id}, choice {choice_id}: {e}")
         return []
