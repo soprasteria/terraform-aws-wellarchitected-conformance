@@ -146,11 +146,11 @@ def extract_question_id(rule_name):
         
         if id_match:
             actual_question_id = id_match.group(1)
-            logger.info(f"Extracted question_number={question_number}, actual_question_id={actual_question_id} from rule_name={rule_name}")
+            logger.debug(f"Extracted question_number={question_number}, actual_question_id={actual_question_id} from rule_name={rule_name}")
             return question_number, actual_question_id
         
         # If we couldn't extract the actual questionId, just return the question number
-        logger.info(f"Extracted question_number={question_number}, but couldn't extract actual_question_id from rule_name={rule_name}")
+        logger.debug(f"Extracted question_number={question_number}, but couldn't extract actual_question_id from rule_name={rule_name}")
         return question_number, None
             
     except Exception as e:
@@ -263,6 +263,47 @@ def get_question_titles_and_choices(workload_id):
         return get_question_titles_and_choices_fallback(workload_id)
     
     return question_data
+
+def get_question_titles_and_choices_fallback(workload_id):
+    """
+    Fallback method to get question titles and choices using workload-specific API calls.
+    Used if export-lens fails.
+    
+    Args:
+        workload_id: The Well-Architected workload ID
+        
+    Returns:
+        Dictionary mapping ordered question IDs (e.g., SEC01) to their titles, choices, and helpful resources
+    """
+    question_data = {}
+    lens_alias = "wellarchitected"  # Focus only on wellarchitected lens
+    
+    try:
+        # Get all pillars and their questions
+        pillars = {
+            'security': 'SEC',
+            'reliability': 'REL',
+            'costOptimization': 'COST'
+        }
+        
+        for pillar_id, prefix in pillars.items():
+            try:
+                # Use ListLensReviewImprovements without pagination
+                response = wellarchitected_client.list_lens_review_improvements(
+                    WorkloadId=workload_id,
+                    LensAlias=lens_alias,
+                    PillarId=pillar_id
+                )
+                
+                # Collect all questions for this pillar
+                questions = []
+                for improvement in response.get('ImprovementSummaries', []):
+                    question_id = improvement.get('QuestionId')
+                    if question_id:
+                        questions.append(question_id)
+                
+                # Process each question in order
+                question_idx = 1
                 for question_id in questions:
                     try:
                         # Get question details
@@ -313,7 +354,7 @@ def get_question_titles_and_choices(workload_id):
                             'full_id': question_id,  # Store the original ID for reference
                             'actual_id': actual_question_id  # Store the extracted actual ID part
                         }
-                        logger.info(f"Mapped ordered ID {ordered_id} to question {question_id} with actual_id {actual_question_id}")
+                        logger.debug(f"Mapped ordered ID {ordered_id} to question {question_id} with actual_id {actual_question_id}")
                         
                     except Exception as e:
                         logger.warning(f"Could not retrieve details for question {question_id}: {e}")
@@ -422,13 +463,13 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                             # Found a match by actual_question_id
                             matched = True
                             question_number = q_id
-                            logger.info(f"Matched rule {rule_name} to question {q_id} by actual_question_id={actual_question_id}")
+                            logger.debug(f"Matched rule {rule_name} to question {q_id} by actual_question_id={actual_question_id}")
                             break
                 
                 # If no match by actual_question_id, try direct question_number match
                 if not matched and question_number in compliance_data[pillar_name]:
                     matched = True
-                    logger.info(f"Matched rule {rule_name} to question {question_number} by direct question number")
+                    logger.debug(f"Matched rule {rule_name} to question {question_number} by direct question number")
                 
                 if matched:
                     # Get rule details including resources
@@ -608,107 +649,3 @@ def lambda_handler(event, context):
                 'message': error_msg
             })
         }
-def get_question_titles_and_choices_fallback(workload_id):
-    """
-    Fallback method to get question titles and choices using workload-specific API calls.
-    Used if export-lens fails.
-    
-    Args:
-        workload_id: The Well-Architected workload ID
-        
-    Returns:
-        Dictionary mapping ordered question IDs (e.g., SEC01) to their titles, choices, and helpful resources
-    """
-    question_data = {}
-    lens_alias = "wellarchitected"  # Focus only on wellarchitected lens
-    
-    try:
-        # Get all pillars and their questions
-        pillars = {
-            'security': 'SEC',
-            'reliability': 'REL',
-            'costOptimization': 'COST'
-        }
-        
-        for pillar_id, prefix in pillars.items():
-            try:
-                # Use ListLensReviewImprovements without pagination
-                response = wellarchitected_client.list_lens_review_improvements(
-                    WorkloadId=workload_id,
-                    LensAlias=lens_alias,
-                    PillarId=pillar_id
-                )
-                
-                # Collect all questions for this pillar
-                questions = []
-                for improvement in response.get('ImprovementSummaries', []):
-                    question_id = improvement.get('QuestionId')
-                    if question_id:
-                        questions.append(question_id)
-                
-                # Process each question in order
-                question_idx = 1
-                for question_id in questions:
-                    try:
-                        # Get question details
-                        question_response = wellarchitected_client.get_answer(
-                            WorkloadId=workload_id,
-                            LensAlias=lens_alias,
-                            QuestionId=question_id
-                        )
-                        
-                        question_title = question_response.get('Answer', {}).get('QuestionTitle', '')
-                        helpful_resources = []
-                        choices = {}
-                        
-                        # Extract helpful resources
-                        for resource in question_response.get('Answer', {}).get('HelpfulResources', []):
-                            helpful_resources.append({
-                                'title': resource.get('DisplayText', ''),
-                                'url': resource.get('Url', '')
-                            })
-                        
-                        # Extract choices
-                        for choice in question_response.get('Answer', {}).get('Choices', []):
-                            choice_id = choice.get('ChoiceId')
-                            choice_title = choice.get('Title')
-                            if choice_id and choice_title:
-                                # Log the choice ID for debugging
-                                logger.debug(f"Found choice: {choice_id} for question {question_id}")
-                                choices[choice_id] = {
-                                    'title': choice_title,
-                                    'description': choice.get('Description', ''),
-                                    'resources': []  # Will store compliance resources for this choice
-                                }
-                        
-                        # Create the ordered ID (e.g., SEC01, REL02)
-                        ordered_id = f"{prefix}{question_idx:02d}"
-                        question_idx += 1
-                        
-                        # Extract the actual question ID part from the full ID
-                        # Example: security_01 -> extract "01"
-                        # Example: reliability_resiliency -> extract "resiliency"
-                        actual_id_parts = question_id.split('_')
-                        actual_question_id = actual_id_parts[-1] if len(actual_id_parts) > 1 else ""
-                        
-                        question_data[ordered_id] = {
-                            'title': question_title,
-                            'helpful_resources': helpful_resources,
-                            'choices': choices,
-                            'full_id': question_id,  # Store the original ID for reference
-                            'actual_id': actual_question_id  # Store the extracted actual ID part
-                        }
-                        logger.debug(f"Mapped ordered ID {ordered_id} to question {question_id} with actual_id {actual_question_id}")
-                        
-                    except Exception as e:
-                        logger.warning(f"Could not retrieve details for question {question_id}: {e}")
-                
-                logger.info(f"Mapped {question_idx-1} questions for pillar {pillar_id}")
-                
-            except Exception as e:
-                logger.error(f"Error getting question data for pillar {pillar_id}: {e}")
-    
-    except Exception as e:
-        logger.error(f"Error getting lens details: {e}")
-    
-    return question_data
