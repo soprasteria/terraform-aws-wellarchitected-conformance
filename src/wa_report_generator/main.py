@@ -235,13 +235,20 @@ def get_question_titles_and_choices(workload_id):
                         ordered_id = f"{prefix}{question_idx:02d}"
                         question_idx += 1
                         
+                        # Extract the actual question ID part from the full ID
+                        # Example: security_01 -> extract "01"
+                        # Example: reliability_resiliency -> extract "resiliency"
+                        actual_id_parts = question_id.split('_')
+                        actual_question_id = actual_id_parts[-1] if len(actual_id_parts) > 1 else ""
+                        
                         question_data[ordered_id] = {
                             'title': question_title,
                             'helpful_resources': helpful_resources,
                             'choices': choices,
-                            'full_id': question_id  # Store the original ID for reference
+                            'full_id': question_id,  # Store the original ID for reference
+                            'actual_id': actual_question_id  # Store the extracted actual ID part
                         }
-                        logger.debug(f"Mapped ordered ID {ordered_id} to question {question_id}: {question_title} with {len(choices)} choices")
+                        logger.debug(f"Mapped ordered ID {ordered_id} to question {question_id} with actual_id {actual_question_id}")
                         
                     except Exception as e:
                         logger.warning(f"Could not retrieve details for question {question_id}: {e}")
@@ -305,7 +312,8 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                         'helpful_resources': question_info.get('helpful_resources', []),
                         'resources': [],
                         'config_rules': {},
-                        'actual_question_id': question_info.get('full_id')
+                        'actual_question_id': question_info.get('actual_id', ''),  # Use the extracted actual ID
+                        'full_id': question_info.get('full_id', '')  # Store the full ID for reference
                     }
         
         # Now process AWS Config rules and add compliance data to matching questions
@@ -340,7 +348,24 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                     continue
                     
                 # Find the matching question in our compliance data
-                if question_number in compliance_data[pillar_name]:
+                matched = False
+                
+                # First try to match by actual_question_id if available
+                if actual_question_id:
+                    for q_id, q_data in compliance_data[pillar_name].items():
+                        if q_data.get('actual_question_id') == actual_question_id:
+                            # Found a match by actual_question_id
+                            matched = True
+                            question_number = q_id
+                            logger.debug(f"Matched rule {rule_name} to question {q_id} by actual_question_id={actual_question_id}")
+                            break
+                
+                # If no match by actual_question_id, try direct question_number match
+                if not matched and question_number in compliance_data[pillar_name]:
+                    matched = True
+                    logger.debug(f"Matched rule {rule_name} to question {question_number} by direct question number")
+                
+                if matched:
                     # Get rule details including resources
                     evaluation_results = get_rule_details(rule_name)
                     
