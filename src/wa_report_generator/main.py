@@ -118,7 +118,9 @@ def extract_choice_id(rule_name):
     Extract ChoiceId from an AWS Config rule name.
     
     Format: QuestionId-ChoiceId_bp_name-of-check
-    Example: SEC05-network-protection_bp_vpc-default-security-group-closed-conformance-pack-qk5aog3dr
+    Examples: 
+    - SEC05-network-protection_bp_vpc-default-security-group-closed-conformance-pack-qk5aog3dr
+    - COST01-cloud-financial-management_bp_aws-budgets-conformance-pack-zg7bakjef
     
     Args:
         rule_name: The AWS Config rule name
@@ -127,13 +129,14 @@ def extract_choice_id(rule_name):
         Tuple of (question_id, choice_id) or (None, None) if not found
     """
     try:
-        # Look for patterns like SEC05-network-protection or REL02-resiliency-strategy
-        pattern = r'([A-Z]{3}\d{2})-([a-z-]+)(?:_bp|_)'
+        # Look for patterns like SEC05-network-protection, REL02-resiliency-strategy, or COST01-cloud-financial-management
+        # Support both uppercase and lowercase prefixes (SEC, sec, COST, cost, etc.)
+        pattern = r'([A-Za-z]{3,4}\d{2})-([a-z-]+)(?:_bp|_)'
         match = re.search(pattern, rule_name)
         
         if match:
-            question_id = match.group(1)  # e.g., SEC05
-            choice_id = match.group(2)    # e.g., network-protection
+            question_id = match.group(1).upper()  # Convert to uppercase for consistency (e.g., sec01 -> SEC01)
+            choice_id = match.group(2)            # e.g., network-protection
             logger.debug(f"Extracted question_id={question_id}, choice_id={choice_id} from rule_name={rule_name}")
             return question_id, choice_id
             
@@ -169,9 +172,8 @@ def get_question_titles_and_choices(workload_id):
         
         for pillar_id, prefix in pillars.items():
             try:
-                # We need to use ListLensReviewImprovements to get all questions
-                paginator = wellarchitected_client.get_paginator('list_lens_review_improvements')
-                page_iterator = paginator.paginate(
+                # Use ListLensReviewImprovements without pagination
+                response = wellarchitected_client.list_lens_review_improvements(
                     WorkloadId=workload_id,
                     LensAlias=lens_alias,
                     PillarId=pillar_id
@@ -179,11 +181,10 @@ def get_question_titles_and_choices(workload_id):
                 
                 # Collect all questions for this pillar
                 questions = []
-                for page in page_iterator:
-                    for improvement in page.get('ImprovementSummaries', []):
-                        question_id = improvement.get('QuestionId')
-                        if question_id:
-                            questions.append(question_id)
+                for improvement in response.get('ImprovementSummaries', []):
+                    question_id = improvement.get('QuestionId')
+                    if question_id:
+                        questions.append(question_id)
                 
                 # Process each question in order
                 question_idx = 1
