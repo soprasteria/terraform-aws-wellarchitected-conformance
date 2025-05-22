@@ -404,7 +404,8 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                     
                     if full_question_id:
                         # Try to get question details from the Well-Architected Tool
-                        question_details = get_question_details(workload_id, full_question_id)
+                        question_details = get_question_details(workload_id, actual_question_id)
+                        logger.info(f"Got question details from the Well-Architected Tool API: {question_details}")
                         if question_details:
                             compliance_data[pillar_name][question_number]['title'] = question_details.get('title', compliance_data[pillar_name][question_number]['title'])
                             compliance_data[pillar_name][question_number]['helpful_resources'] = question_details.get('helpful_resources', [])
