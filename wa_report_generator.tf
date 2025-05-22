@@ -132,7 +132,10 @@ module "wa_reports_s3_bucket" {
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket.git?ref=8a0b697adfbc673e6135c70246cff7f8052ad95a"
 
   bucket = "${var.reports_bucket_name_prefix}-${local.aws_account_id}"
-  acl    = "private"
+
+  # Use explicit ownership controls instead of ACL
+  control_object_ownership = true
+  object_ownership         = "BucketOwnerEnforced"
 
   # Block all public access
   block_public_acls       = true
