@@ -250,7 +250,8 @@
         
         {% if business_support_enabled is not none %}
             <div class="support-status {% if business_support_enabled %}support-enabled{% else %}support-disabled{% endif %}">
-                <p><strong>AWS Support Status:</strong> {{ support_message }}</p>
+                <p><strong>AWS Support plan status:</strong> {{ support_message }}</p>
+                <p>Ensure you have a suitable support plan enabled according to <a href="https://docs.aws.amazon.com/wellarchitected/latest/framework/ops_ready_to_support_enable_support_plans.html">OPS07-BP06 Create support plans for production workloads"</a>.</p>
             </div>
         {% endif %}
     </div>
