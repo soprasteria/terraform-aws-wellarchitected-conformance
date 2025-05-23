@@ -75,6 +75,14 @@ module "lambda_function_wa_report_generator" {
         "wellarchitected:ListCheckSummaries"
       ],
       resources = ["*"]
+    },
+    # Add AWS Support permissions to check if Business/Enterprise Support is enabled
+    support = {
+      effect = "Allow",
+      actions = [
+        "support:DescribeTrustedAdvisorChecks"
+      ],
+      resources = ["*"]
     }
   }
 

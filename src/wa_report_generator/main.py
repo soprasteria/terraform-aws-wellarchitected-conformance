@@ -465,6 +465,9 @@ def generate_html_report(compliance_data, account_id, region):
     Returns:
         HTML content as string
     """
+    # Check if AWS Business or Enterprise Support is enabled
+    business_support_enabled, support_message = check_business_support_enabled()
+    
     # Setup Jinja2 environment
     template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
     env = Environment(
@@ -480,7 +483,9 @@ def generate_html_report(compliance_data, account_id, region):
         compliance_data=compliance_data,
         account_id=account_id,
         region=region,
-        generation_time=datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S %Z")
+        generation_time=datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S %Z"),
+        business_support_enabled=business_support_enabled,
+        support_message=support_message
     )
     
     return html_content
@@ -688,3 +693,34 @@ def lambda_handler(event, context):
                 'message': error_msg
             })
         }
+def check_business_support_enabled():
+    """
+    Check if AWS Business or Enterprise Support is enabled by attempting to call
+    the AWS Support API. If we get a SubscriptionRequiredException, it means
+    Business or Enterprise Support is not enrolled.
+    
+    Returns:
+        Tuple of (is_enabled, message)
+    """
+    try:
+        # Initialize AWS Support client
+        support_client = boto3.client('support')
+        
+        # Try to call describe-trusted-advisor-checks
+        response = support_client.describe_trusted_advisor_checks(language='en')
+        
+        # If we get here, Business or Enterprise Support is enabled
+        logger.info("AWS Business or Enterprise Support is enabled")
+        return True, "AWS Business or Enterprise Support is enabled. The full set of Trusted Advisor checks is available."
+        
+    except ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code')
+        if error_code == 'SubscriptionRequiredException':
+            logger.info("AWS Business or Enterprise Support is not enabled")
+            return False, "AWS Business or Enterprise Support is not enabled. To unlock the full set of Trusted Advisor checks, upgrade to Business or Enterprise Support."
+        else:
+            logger.warning(f"Error checking AWS Support subscription: {e}")
+            return None, f"Could not determine AWS Support subscription status: {error_code}"
+    except Exception as e:
+        logger.warning(f"Error checking AWS Support subscription: {e}")
+        return None, f"Could not determine AWS Support subscription status: {str(e)}"

@@ -247,6 +247,12 @@
         <p><strong>Generated:</strong> {{ generation_time }}</p>
         <p><strong>Account ID:</strong> {{ account_id }}</p>
         <p><strong>Region:</strong> {{ region }}</p>
+        
+        {% if business_support_enabled is not none %}
+            <div class="support-status {% if business_support_enabled %}support-enabled{% else %}support-disabled{% endif %}">
+                <p><strong>AWS Support Status:</strong> {{ support_message }}</p>
+            </div>
+        {% endif %}
     </div>
     
     <!-- Table of Contents -->
@@ -425,3 +431,16 @@
     </footer>
 </body>
 </html>
+        .support-status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .support-enabled {
+            background-color: #e6ffe6;
+            border: 1px solid #4CAF50;
+        }
+        .support-disabled {
+            background-color: #fff8e6;
+            border: 1px solid #ff9900;
+        }
