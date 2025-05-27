@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Well-Architected Framework Compliance Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #0066cc;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #0066cc;
+            margin-top: 30px;
+        }
+        h3 {
+            margin-top: 20px;
+        }
+        h4 {
+            margin-top: 15px;
+            color: #0066cc;
+        }
+        h5 {
+            margin-top: 10px;
+            color: #333;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 4px 6px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .compliant {
+            color: green;
+            font-weight: bold;
+        }
+        .non-compliant {
+            color: red;
+            font-weight: bold;
+        }
+        .summary {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f8f8;
+            border-left: 5px solid #0066cc;
+        }
+        .pillar-section {
+            margin-bottom: 40px;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .progress-bar {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .progress {
+            height: 20px;
+            background-color: #4CAF50;
+            border-radius: 5px;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+        }
+        .resources {
+            margin-top: 8px;
+            padding: 8px;
+            background-color: #f0f7ff;
+            border-left: 3px solid #0066cc;
+        }
+        .resources h4 {
+            margin-top: 0;
+            margin-bottom: 5px;
+            color: #0066cc;
+            font-size: 0.95em;
+        }
+        .resources ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .resources li {
+            margin-bottom: 5px;
+        }
+        .question-title {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .question-id {
+            font-weight: bold;
+            color: #0066cc;
+        }
+        .question-section {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        .config-rule-section {
+            margin: 10px 0;
+            padding: 8px;
+            background-color: #f9f9f9;
+            border-left: 3px solid #4CAF50;
+        }
+        .config-rule-section h5 {
+            margin-top: 0;
+            margin-bottom: 5px;
+            font-size: 0.95em;
+        }
+        .no-resources {
+            font-style: italic;
+            color: #666;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-left: 3px solid #999;
+        }
+        .rule-name {
+            font-size: 0.9em;
+            color: #666;
+            font-style: italic;
+        }
+        .mapping-info {
+            margin: 5px 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .helpful-resource {
+            background-color: #f0f7ff;
+            padding: 5px;
+            margin-bottom: 3px;
+            border-left: 3px solid #0066cc;
+            font-size: 0.9em;
+        }
+        .helpful-resource-title {
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        .helpful-resource-url {
+            word-break: break-all;
+            font-size: 0.85em;
+        }
+        .actual-question-id {
+            font-size: 0.8em;
+            color: #666;
+            font-style: italic;
+            margin-left: 10px;
+        }
+        .toc {
+            background-color: #f8f8f8;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .compact-table {
+            font-size: 0.85em;
+        }
+        .resource-id {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .trusted-advisor {
+            margin-top: 8px;
+            margin-bottom: 12px;
+            padding: 8px;
+            background-color: #fff8e6;
+            border-left: 3px solid #ff9900;
+        }
+        .trusted-advisor h4 {
+            margin-top: 0;
+            margin-bottom: 5px;
+            color: #ff9900;
+            font-size: 0.95em;
+        }
+        .question-description {
+            margin: 10px 0 15px 0;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-left: 3px solid #0066cc;
+            font-style: italic;
+            color: #333;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        .check-reason {
+            background-color: #f9f9f9;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .error, .warning, .not_applicable {
+            color: #ff9900;
+            font-weight: bold;
+        }
+        .ok {
+            color: green;
+            font-weight: bold;
+        }
+        .high {
+            color: red;
+            font-weight: bold;
+        }
+        .medium {
+            color: #ff9900;
+            font-weight: bold;
+        }
+        .low {
+            color: #0066cc;
+            font-weight: bold;
+        }
+        .unknown {
+            color: #666;
+            font-style: italic;
+        }
+        .support-status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .support-enabled {
+            background-color: #e6ffe6;
+            border: 1px solid #4CAF50;
+        }
+        .support-disabled {
+            background-color: #fff8e6;
+            border: 1px solid #ff9900;
+        }
+    </style>
+</head>
+<body>
+    <h1>Well-Architected Framework Compliance Report</h1>
+    <div class="summary">
+        <p><strong>Generated:</strong> {{ generation_time }}</p>
+        <p><strong>Account ID:</strong> {{ account_id }}</p>
+        <p><strong>Region:</strong> {{ region }}</p>
+        
+        {% if business_support_enabled is not none %}
+            <div class="support-status {% if business_support_enabled %}support-enabled{% else %}support-disabled{% endif %}">
+                <p><strong>AWS Support plan status:</strong> {{ support_message }}</p>
+                <p>Ensure you have a suitable support plan enabled according to <a href="https://docs.aws.amazon.com/wellarchitected/latest/framework/ops_ready_to_support_enable_support_plans.html">OPS07-BP06 Create support plans for production workloads"</a>.</p>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Table of Contents -->
+    <div class="toc">
+        <h2>Table of Contents</h2>
+        <ul>
+            {% for pillar_name, pillar_data in compliance_data.items() %}
+                <li><a href="#{{ pillar_name | lower | replace(' ', '-') }}">{{ pillar_name }} Pillar</a>
+                    <ul>
+                        {% set sorted_questions = pillar_data.keys()|list|sort %}
+                        {% for question_id in sorted_questions %}
+                            <li><a href="#{{ pillar_name | lower | replace(' ', '-') }}-{{ question_id | lower }}">{{ question_id }}: {{ pillar_data[question_id].title }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+    {% for pillar_name, pillar_data in compliance_data.items() %}
+    <div class="pillar-section" id="{{ pillar_name | lower | replace(' ', '-') }}">
+        <h2>{{ pillar_name }} Pillar</h2>
+        
+        {% set compliant_count = namespace(value=0) %}
+        {% set total_count = namespace(value=0) %}
+        
+        {% for question_id, question_data in pillar_data.items() %}
+            {% for resource in question_data.resources %}
+                {% set total_count.value = total_count.value + 1 %}
+                {% if resource.compliance_status == 'COMPLIANT' %}
+                    {% set compliant_count.value = compliant_count.value + 1 %}
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+        
+        {% set compliance_score = 0 %}
+        {% if total_count.value > 0 %}
+            {% set compliance_score = (compliant_count.value / total_count.value * 100) | int %}
+        {% endif %}
+        
+        <div class="pillar-summary">
+            <div>
+                <h3>Compliance Score</h3>
+                <div class="progress-bar">
+                    <div class="progress" style="width: {{ compliance_score }}%">
+                        {{ compliance_score }}%
+                    </div>
+                </div>
+            </div>
+            <div class="pillar-score">{{ compliance_score }}%</div>
+        </div>
+        
+        <div class="compliance-summary">
+            <div class="compliance-stat compliant-stat">
+                <h4>Compliant Resources</h4>
+                <div class="pillar-score">{{ compliant_count.value }}</div>
+            </div>
+            <div class="compliance-stat non-compliant-stat">
+                <h4>Non-Compliant Resources</h4>
+                <div class="pillar-score">{{ total_count.value - compliant_count.value }}</div>
+            </div>
+        </div>
+        
+        {% set sorted_questions = pillar_data.keys()|list|sort %}
+        {% for question_id in sorted_questions %}
+            {% set question_data = pillar_data[question_id] %}
+            <div class="question-section" id="{{ pillar_name | lower | replace(' ', '-') }}-{{ question_id | lower }}">
+                <h3>
+                    <span class="question-id">{{ question_id }}</span>: 
+                    <span class="question-title">{{ question_data.title }}</span>
+                    {% if question_data.actual_question_id %}
+                    <span class="actual-question-id">(API ID: {{ question_data.actual_question_id }})</span>
+                    {% endif %}
+                </h3>
+                
+                {% if question_data.description %}
+                <div class="question-description">
+                    {{ question_data.description }}
+                </div>
+                {% endif %}
+                
+                <!-- Helpful Resources -->
+                {% if question_data.helpful_resources and question_data.helpful_resources|length > 0 %}
+                <div class="resources">
+                    <h4>Helpful Resources:</h4>
+                    {% for resource in question_data.helpful_resources %}
+                        <div class="helpful-resource">
+                            <div class="helpful-resource-title">{{ resource.title }}</div>
+                            <div class="helpful-resource-url"><a href="{{ resource.url }}" target="_blank">{{ resource.url }}</a></div>
+                        </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <!-- Trusted Advisor Checks -->
+                {% if question_data.choices %}
+                    {% for choice_id, choice_data in question_data.choices.items() %}
+                        {% if choice_data.trusted_advisor_checks and choice_data.trusted_advisor_checks|length > 0 %}
+                            <div class="trusted-advisor">
+                                <h4>Trusted Advisor Checks for {{ choice_data.title }}:</h4>
+                                <table class="compact-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Check Name</th>
+                                            <th>Provider</th>
+                                            <th>Status</th>
+                                            <th>Risk</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for check in choice_data.trusted_advisor_checks %}
+                                            <tr>
+                                                <td>{{ check.name }}</td>
+                                                <td>{{ check.provider_name }}</td>
+                                                <td class="{{ check.status | lower }}">{{ check.status }}</td>
+                                                <td class="{{ check.risk | lower }}">{{ check.risk }}</td>
+                                                <td>{{ check.description | safe }}</td>
+                                            </tr>
+                                            {% if check.reason %}
+                                            <tr>
+                                                <td colspan="5" class="check-reason">
+                                                    <strong>Reason:</strong> {{ check.reason }}
+                                                    {% if check.flagged_resources > 0 %}
+                                                    <br><strong>Flagged Resources:</strong> {{ check.flagged_resources }}
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+                
+                <!-- Config Rules and Resources -->
+                {% if question_data.config_rules and question_data.config_rules|length > 0 %}
+                    <h4>AWS Config Rules:</h4>
+                    {% for rule_name, resources in question_data.config_rules.items() %}
+                        <div class="config-rule-section">
+                            <h5>{{ rule_name }}</h5>
+                            <table class="compact-table">
+                                <thead>
+                                    <tr>
+                                        <th>Resource Type</th>
+                                        <th>Resource ID</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for resource in resources %}
+                                        <tr>
+                                            <td>{{ resource.resource_type }}</td>
+                                            <td class="resource-id">{{ resource.resource_id }}</td>
+                                            <td class="{{ 'compliant' if resource.compliance_status == 'COMPLIANT' else 'non-compliant' }}">
+                                                {{ resource.compliance_status }}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="no-resources">No AWS Config rules detected for this question.</p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+    
+    <footer>
+        <p>Generated by module <a href="https://github.com/soprasteria/terraform-aws-wellarchitected-conformance/">terraform-aws-wellarchitected-conformance</a> - Provided without warranty or liability for completeness, use at your own risk - <a href="https://github.com/soprasteria/terraform-aws-wellarchitected-conformance/blob/main/LICENSE.md">LICENSE.md</a></p>
+    </footer>
+</body>
+</html>
