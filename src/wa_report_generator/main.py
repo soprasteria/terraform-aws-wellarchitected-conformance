@@ -442,6 +442,10 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                     'actual_question_id': actual_question_id
                 }
                 
+                # Try to get the Name tag for this resource
+                name_tag = get_resource_tags(resource_type, resource_id)
+                resource_data['name_tag'] = name_tag if name_tag else "No tag"
+                
                 # Add resource to the main resources list
                 compliance_data[pillar_name][question_number]['resources'].append(resource_data)
                 
@@ -724,3 +728,52 @@ def check_business_support_enabled():
     except Exception as e:
         logger.warning(f"Error checking AWS Support subscription: {e}")
         return None, f"Could not determine AWS Support subscription status: {str(e)}"
+def get_resource_tags(resource_type, resource_id):
+    """
+    Get tags for a specific AWS resource, focusing on the Name tag.
+    
+    Args:
+        resource_type: The type of the AWS resource
+        resource_id: The ID of the AWS resource
+        
+    Returns:
+        The value of the Name tag, or None if not found
+    """
+    try:
+        # Initialize the resource-groups-tagging-api client
+        tagging_client = boto3.client('resourcegroupstaggingapi')
+        
+        # Construct the ARN based on resource type and ID
+        # This is a simplified approach and may need to be adjusted for certain resource types
+        if resource_type.startswith('AWS::'):
+            resource_type_short = resource_type[5:]  # Remove 'AWS::' prefix
+        else:
+            resource_type_short = resource_type
+            
+        # Handle special cases for ARN construction
+        if resource_type_short == 'EC2::Instance':
+            arn = f"arn:aws:ec2:{boto3.session.Session().region_name}:{boto3.client('sts').get_caller_identity()['Account']}:instance/{resource_id}"
+        elif resource_type_short == 'S3::Bucket':
+            arn = f"arn:aws:s3:::{resource_id}"
+        else:
+            # Generic ARN format for most resources
+            service = resource_type_short.split('::')[0].lower()
+            resource_path = resource_type_short.split('::')[1].lower()
+            arn = f"arn:aws:{service}:{boto3.session.Session().region_name}:{boto3.client('sts').get_caller_identity()['Account']}:{resource_path}/{resource_id}"
+        
+        # Get tags for the resource
+        response = tagging_client.get_resources(
+            ResourceARNList=[arn]
+        )
+        
+        # Extract the Name tag if it exists
+        for resource_tag_mapping in response.get('ResourceTagMappingList', []):
+            tags = resource_tag_mapping.get('Tags', [])
+            for tag in tags:
+                if tag.get('Key') == 'Name':
+                    return tag.get('Value')
+        
+        return None
+    except Exception as e:
+        logger.debug(f"Error getting tags for resource {resource_type} {resource_id}: {e}")
+        return None

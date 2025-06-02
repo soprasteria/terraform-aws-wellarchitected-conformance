@@ -83,6 +83,14 @@ module "lambda_function_wa_report_generator" {
         "support:DescribeTrustedAdvisorChecks"
       ],
       resources = ["*"]
+    },
+    # Add Resource Groups Tagging API permissions to get resource tags
+    tagging = {
+      effect = "Allow",
+      actions = [
+        "tag:GetResources"
+      ],
+      resources = ["*"]
     }
   }
 

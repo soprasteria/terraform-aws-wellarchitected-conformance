@@ -264,7 +264,7 @@
         {% if business_support_enabled is not none %}
             <div class="support-status {% if business_support_enabled %}support-enabled{% else %}support-disabled{% endif %}">
                 <p><strong>AWS Support plan status:</strong> {{ support_message }}</p>
-                <p>Ensure you have a suitable support plan enabled according to <a href="https://docs.aws.amazon.com/wellarchitected/latest/framework/ops_ready_to_support_enable_support_plans.html">OPS07-BP06 Create support plans for production workloads"</a>.</p>
+                <p>Ensure you have the appropriate AWS Support plan enabled according to <a href="https://docs.aws.amazon.com/wellarchitected/latest/framework/ops_ready_to_support_enable_support_plans.html">OPS07-BP06 Create support plans for production workloads</a>.</p>
             </div>
         {% endif %}
     </div>
@@ -415,6 +415,7 @@
                                     <tr>
                                         <th>Resource Type</th>
                                         <th>Resource ID</th>
+                                        <th>Tag Name</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
@@ -423,6 +424,7 @@
                                         <tr>
                                             <td>{{ resource.resource_type }}</td>
                                             <td class="resource-id">{{ resource.resource_id }}</td>
+                                            <td class="resource-tag">{{ resource.name_tag }}</td>
                                             <td class="{{ 'compliant' if resource.compliance_status == 'COMPLIANT' else 'non-compliant' }}">
                                                 {{ resource.compliance_status }}
                                             </td>
@@ -445,3 +447,7 @@
     </footer>
 </body>
 </html>
+        .resource-tag {
+            font-style: italic;
+            color: #666;
+        }
