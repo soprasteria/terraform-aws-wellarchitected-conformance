@@ -667,7 +667,10 @@ def lambda_handler(event, context):
         
         # Collect compliance data with question details if workload_id is provided
         logger.info("Collecting compliance data from AWS Config")
+        start_time = datetime.now()
         compliance_data = collect_compliance_data(conformance_packs, workload_id)
+        end_time = datetime.now()
+        logger.info(f"Collected compliance data in {(end_time - start_time).total_seconds()} seconds")
         
         # Generate HTML report
         logger.info("Generating HTML report")
@@ -728,52 +731,436 @@ def check_business_support_enabled():
     except Exception as e:
         logger.warning(f"Error checking AWS Support subscription: {e}")
         return None, f"Could not determine AWS Support subscription status: {str(e)}"
-def get_resource_tags(resource_type, resource_id):
+# Global cache for resource tags
+RESOURCE_TAG_CACHE = {}
+
+def get_resource_tags_batch(resources):
     """
-    Get tags for a specific AWS resource, focusing on the Name tag.
+    Get tags for multiple AWS resources in batch to reduce API calls.
     
     Args:
-        resource_type: The type of the AWS resource
-        resource_id: The ID of the AWS resource
+        resources: List of dictionaries containing resource_type and resource_id
         
     Returns:
-        The value of the Name tag, or None if not found
+        Dictionary mapping resource IDs to their Name tag values
     """
     try:
         # Initialize the resource-groups-tagging-api client
         tagging_client = boto3.client('resourcegroupstaggingapi')
         
-        # Construct the ARN based on resource type and ID
-        # This is a simplified approach and may need to be adjusted for certain resource types
-        if resource_type.startswith('AWS::'):
-            resource_type_short = resource_type[5:]  # Remove 'AWS::' prefix
-        else:
-            resource_type_short = resource_type
+        # Create a dictionary to store results
+        name_tags = {}
+        
+        # Group resources by type to construct ARNs efficiently
+        resource_groups = {}
+        for resource in resources:
+            resource_type = resource.get('resource_type')
+            resource_id = resource.get('resource_id')
             
-        # Handle special cases for ARN construction
-        if resource_type_short == 'EC2::Instance':
-            arn = f"arn:aws:ec2:{boto3.session.Session().region_name}:{boto3.client('sts').get_caller_identity()['Account']}:instance/{resource_id}"
-        elif resource_type_short == 'S3::Bucket':
-            arn = f"arn:aws:s3:::{resource_id}"
-        else:
-            # Generic ARN format for most resources
-            service = resource_type_short.split('::')[0].lower()
-            resource_path = resource_type_short.split('::')[1].lower()
-            arn = f"arn:aws:{service}:{boto3.session.Session().region_name}:{boto3.client('sts').get_caller_identity()['Account']}:{resource_path}/{resource_id}"
+            if not resource_type or not resource_id:
+                continue
+                
+            if resource_type not in resource_groups:
+                resource_groups[resource_type] = []
+            
+            resource_groups[resource_type].append(resource_id)
         
-        # Get tags for the resource
-        response = tagging_client.get_resources(
-            ResourceARNList=[arn]
-        )
+        # Process each resource type group
+        for resource_type, resource_ids in resource_groups.items():
+            # Construct ARNs for this resource type
+            arns = []
+            
+            if resource_type.startswith('AWS::'):
+                resource_type_short = resource_type[5:]  # Remove 'AWS::' prefix
+            else:
+                resource_type_short = resource_type
+            
+            region = boto3.session.Session().region_name
+            account_id = boto3.client('sts').get_caller_identity()['Account']
+            
+            for resource_id in resource_ids:
+                # Handle special cases for ARN construction
+                if resource_type_short == 'EC2::Instance':
+                    arn = f"arn:aws:ec2:{region}:{account_id}:instance/{resource_id}"
+                elif resource_type_short == 'S3::Bucket':
+                    arn = f"arn:aws:s3:::{resource_id}"
+                else:
+                    # Generic ARN format for most resources
+                    try:
+                        service = resource_type_short.split('::')[0].lower()
+                        resource_path = resource_type_short.split('::')[1].lower()
+                        arn = f"arn:aws:{service}:{region}:{account_id}:{resource_path}/{resource_id}"
+                    except IndexError:
+                        logger.debug(f"Could not parse resource type: {resource_type_short}")
+                        continue
+                
+                arns.append(arn)
+            
+            # Process ARNs in batches of 20 (API limit)
+            for i in range(0, len(arns), 20):
+                batch_arns = arns[i:i+20]
+                
+                try:
+                    response = tagging_client.get_resources(
+                        ResourceARNList=batch_arns
+                    )
+                    
+                    # Extract Name tags
+                    for resource_tag_mapping in response.get('ResourceTagMappingList', []):
+                        resource_arn = resource_tag_mapping.get('ResourceARN', '')
+                        tags = resource_tag_mapping.get('Tags', [])
+                        
+                        # Extract resource ID from ARN
+                        resource_id = resource_arn.split('/')[-1]
+                        if ':' in resource_id and not '/' in resource_arn:  # Handle S3 buckets
+                            resource_id = resource_id.split(':')[-1]
+                        
+                        # Find Name tag
+                        for tag in tags:
+                            if tag.get('Key') == 'Name':
+                                name_tags[resource_id] = tag.get('Value')
+                                break
+                except Exception as e:
+                    logger.debug(f"Error getting tags for batch: {e}")
         
-        # Extract the Name tag if it exists
-        for resource_tag_mapping in response.get('ResourceTagMappingList', []):
-            tags = resource_tag_mapping.get('Tags', [])
+        return name_tags
+        
+    except Exception as e:
+        logger.warning(f"Error in batch tag retrieval: {e}")
+        return {}
+
+def get_resource_tags_with_cache(resources):
+    """
+    Get tags for resources with caching to reduce API calls.
+    
+    Args:
+        resources: List of dictionaries containing resource_type and resource_id
+        
+    Returns:
+        Dictionary mapping resource IDs to their Name tag values
+    """
+    # Identify which resources are not in cache
+    resources_to_fetch = []
+    for resource in resources:
+        resource_id = resource.get('resource_id')
+        if resource_id not in RESOURCE_TAG_CACHE:
+            resources_to_fetch.append(resource)
+    
+    # Fetch only uncached resources
+    if resources_to_fetch:
+        logger.info(f"Fetching tags for {len(resources_to_fetch)} uncached resources")
+        new_tags = get_resource_tags_batch(resources_to_fetch)
+        # Update cache
+        RESOURCE_TAG_CACHE.update(new_tags)
+        logger.info(f"Updated cache with {len(new_tags)} new resource tags")
+    else:
+        logger.info("All resource tags found in cache")
+    
+    # Return tags from cache
+    result = {}
+    for resource in resources:
+        resource_id = resource.get('resource_id')
+        result[resource_id] = RESOURCE_TAG_CACHE.get(resource_id, "No tag")
+    
+    return result
+# Global cache for resource tags
+RESOURCE_TAG_CACHE = {}
+
+def construct_arns(resource_type, resource_ids):
+    """
+    Construct ARNs for a batch of resources of the same type.
+    
+    Args:
+        resource_type: The type of AWS resources
+        resource_ids: List of resource IDs
+        
+    Returns:
+        List of ARNs
+    """
+    arns = []
+    region = boto3.session.Session().region_name
+    account_id = boto3.client('sts').get_caller_identity()['Account']
+    
+    if resource_type.startswith('AWS::'):
+        resource_type_short = resource_type[5:]
+    else:
+        resource_type_short = resource_type
+        
+    for resource_id in resource_ids:
+        try:
+            if resource_type_short == 'EC2::Instance':
+                arn = f"arn:aws:ec2:{region}:{account_id}:instance/{resource_id}"
+            elif resource_type_short == 'S3::Bucket':
+                arn = f"arn:aws:s3:::{resource_id}"
+            else:
+                service = resource_type_short.split('::')[0].lower()
+                resource_path = resource_type_short.split('::')[1].lower()
+                arn = f"arn:aws:{service}:{region}:{account_id}:{resource_path}/{resource_id}"
+            arns.append(arn)
+        except Exception as e:
+            logger.debug(f"Error constructing ARN for {resource_type} {resource_id}: {e}")
+    
+    return arns
+
+def get_tags_for_batch(tagging_client, arns):
+    """
+    Get tags for a batch of ARNs.
+    
+    Args:
+        tagging_client: The boto3 resourcegroupstaggingapi client
+        arns: List of ARNs to get tags for
+        
+    Returns:
+        Dictionary mapping resource IDs to their Name tag values
+    """
+    name_tags = {}
+    try:
+        response = tagging_client.get_resources(ResourceARNList=arns)
+        
+        for mapping in response.get('ResourceTagMappingList', []):
+            resource_arn = mapping.get('ResourceARN', '')
+            tags = mapping.get('Tags', [])
+            
+            # Extract resource ID from ARN
+            resource_id = resource_arn.split('/')[-1]
+            if ':' in resource_id and '/' not in resource_arn:  # Handle S3 buckets
+                resource_id = resource_id.split(':')[-1]
+            
+            # Find Name tag
             for tag in tags:
                 if tag.get('Key') == 'Name':
-                    return tag.get('Value')
-        
-        return None
+                    name_tags[resource_id] = tag.get('Value')
+                    break
     except Exception as e:
-        logger.debug(f"Error getting tags for resource {resource_type} {resource_id}: {e}")
-        return None
+        logger.debug(f"Error getting tags for batch: {e}")
+    
+    return name_tags
+
+def get_resource_tags_batch(resources):
+    """
+    Get tags for multiple AWS resources in batch to reduce API calls.
+    
+    Args:
+        resources: List of dictionaries containing resource_type and resource_id
+        
+    Returns:
+        Dictionary mapping resource IDs to their Name tag values
+    """
+    try:
+        tagging_client = boto3.client('resourcegroupstaggingapi')
+        name_tags = {}
+        
+        # Group resources by type
+        resource_groups = {}
+        for resource in resources:
+            resource_type = resource.get('resource_type')
+            resource_id = resource.get('resource_id')
+            
+            if not resource_type or not resource_id:
+                continue
+                
+            if resource_type not in resource_groups:
+                resource_groups[resource_type] = []
+            
+            resource_groups[resource_type].append(resource_id)
+        
+        # Process each resource type group
+        for resource_type, resource_ids in resource_groups.items():
+            # Process in batches of 20 (API limit)
+            arns = construct_arns(resource_type, resource_ids)
+            for i in range(0, len(arns), 20):
+                batch_arns = arns[i:i+20]
+                name_tags.update(get_tags_for_batch(tagging_client, batch_arns))
+        
+        return name_tags
+    except Exception as e:
+        logger.warning(f"Error in batch tag retrieval: {e}")
+        return {}
+
+def get_resource_tags_with_cache(resources):
+    """
+    Get tags for resources with caching to reduce API calls.
+    
+    Args:
+        resources: List of dictionaries containing resource_type and resource_id
+        
+    Returns:
+        Dictionary mapping resource IDs to their Name tag values
+    """
+    # Identify which resources are not in cache
+    resources_to_fetch = []
+    for resource in resources:
+        resource_id = resource.get('resource_id')
+        if resource_id not in RESOURCE_TAG_CACHE:
+            resources_to_fetch.append(resource)
+    
+    # Fetch only uncached resources
+    if resources_to_fetch:
+        logger.info(f"Fetching tags for {len(resources_to_fetch)} uncached resources")
+        new_tags = get_resource_tags_batch(resources_to_fetch)
+        # Update cache
+        RESOURCE_TAG_CACHE.update(new_tags)
+        logger.info(f"Updated cache with {len(new_tags)} new resource tags")
+    else:
+        logger.info("All resource tags found in cache")
+    
+    # Return tags from cache
+    result = {}
+    for resource in resources:
+        resource_id = resource.get('resource_id')
+        result[resource_id] = RESOURCE_TAG_CACHE.get(resource_id, "No tag")
+    
+    return result
+def collect_compliance_data_optimized(conformance_packs, workload_id=None):
+    """
+    Optimized version of collect_compliance_data that uses batch processing for resource tags.
+    
+    Args:
+        conformance_packs: List of conformance pack names to process
+        workload_id: Well-Architected workload ID to retrieve question details
+        
+    Returns:
+        Dictionary with compliance data organized by pillar and question
+    """
+    compliance_data = {}
+    
+    # Initialize pillar data
+    for pillar_name in ['Security', 'Reliability', 'Cost Optimization']:
+        compliance_data[pillar_name] = {}
+    
+    # First, collect all resources across all conformance packs to batch process tags
+    all_resources = []
+    all_rules_data = {}  # Store rule data to avoid duplicate API calls
+    
+    # Process each conformance pack to collect resources
+    for conformance_pack_name in conformance_packs:
+        # Extract pillar name for this conformance pack
+        pillar_name = None
+        for prefix, pillar_id in PILLAR_MAPPING.items():
+            if prefix in conformance_pack_name:
+                if pillar_id == 'security':
+                    pillar_name = 'Security'
+                elif pillar_id == 'reliability':
+                    pillar_name = 'Reliability'
+                elif pillar_id == 'costOptimization':
+                    pillar_name = 'Cost Optimization'
+                break
+        
+        if not pillar_name:
+            logger.warning(f"Could not determine pillar name for conformance pack: {conformance_pack_name}")
+            continue
+            
+        # Get conformance pack rules
+        rules = get_conformance_pack_details(conformance_pack_name)
+        
+        # Collect all resources from all rules
+        for rule in rules:
+            rule_name = rule.get('ConfigRuleName')
+            
+            # Store rule data
+            if rule_name not in all_rules_data:
+                # Extract question number and actual question ID from rule name
+                question_number, actual_question_id = extract_question_id(rule_name)
+                
+                if not question_number:
+                    logger.warning(f"Could not extract question number from rule name: {rule_name}")
+                    continue
+                
+                # Get rule details including resources
+                evaluation_results = get_rule_details(rule_name)
+                
+                all_rules_data[rule_name] = {
+                    'pillar_name': pillar_name,
+                    'question_number': question_number,
+                    'actual_question_id': actual_question_id,
+                    'evaluation_results': evaluation_results
+                }
+                
+                # Collect resources for tag retrieval
+                for result in evaluation_results:
+                    resource_type = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceType')
+                    resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
+                    
+                    if resource_type and resource_id:
+                        all_resources.append({
+                            'resource_type': resource_type,
+                            'resource_id': resource_id
+                        })
+    
+    # Get tags for all resources in one batch call with caching
+    logger.info(f"Getting tags for {len(all_resources)} resources")
+    start_time = datetime.now()
+    name_tags = get_resource_tags_with_cache(all_resources)
+    end_time = datetime.now()
+    logger.info(f"Retrieved tags for {len(name_tags)} resources in {(end_time - start_time).total_seconds()} seconds")
+    
+    # Now process the rules data to build the compliance data structure
+    for rule_name, rule_data in all_rules_data.items():
+        pillar_name = rule_data['pillar_name']
+        question_number = rule_data['question_number']
+        actual_question_id = rule_data['actual_question_id']
+        evaluation_results = rule_data['evaluation_results']
+        
+        # Use question_number as the key in our data structure
+        if question_number not in compliance_data[pillar_name]:
+            # Initialize with basic information
+            compliance_data[pillar_name][question_number] = {
+                'title': f"Best Practice {question_number}",
+                'description': '',
+                'helpful_resources': [],
+                'resources': [],
+                'config_rules': {},
+                'actual_question_id': actual_question_id
+            }
+            
+            # If we have a workload_id and actual_question_id, try to get question details
+            if workload_id and actual_question_id:
+                # Construct the full question ID based on pillar
+                if pillar_name == 'Security':
+                    full_question_id = f"security_{actual_question_id}"
+                elif pillar_name == 'Reliability':
+                    full_question_id = f"reliability_{actual_question_id}"
+                elif pillar_name == 'Cost Optimization':
+                    full_question_id = f"costOptimization_{actual_question_id}"
+                else:
+                    full_question_id = None
+                
+                if full_question_id:
+                    # Try to get question details from the Well-Architected Tool
+                    question_details = get_question_details(workload_id, pillar_name.lower(), full_question_id)
+                    logger.info(f"Got question details from the Well-Architected Tool API for {full_question_id}")
+                    if question_details:
+                        compliance_data[pillar_name][question_number]['title'] = question_details.get('title', compliance_data[pillar_name][question_number]['title'])
+                        compliance_data[pillar_name][question_number]['description'] = question_details.get('description', '')
+                        compliance_data[pillar_name][question_number]['helpful_resources'] = question_details.get('helpful_resources', [])
+                        compliance_data[pillar_name][question_number]['full_id'] = full_question_id
+                        compliance_data[pillar_name][question_number]['choices'] = question_details.get('choices', {})
+        
+        # Process evaluation results
+        for result in evaluation_results:
+            resource_type = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceType')
+            resource_id = result.get('EvaluationResultIdentifier', {}).get('EvaluationResultQualifier', {}).get('ResourceId')
+            resource_compliance = result.get('ComplianceType')
+            
+            resource_data = {
+                'resource_type': resource_type,
+                'resource_id': resource_id,
+                'compliance_status': resource_compliance,
+                'rule_name': rule_name,
+                'actual_question_id': actual_question_id,
+                'name_tag': name_tags.get(resource_id, "No tag")
+            }
+            
+            # Add resource to the main resources list
+            compliance_data[pillar_name][question_number]['resources'].append(resource_data)
+            
+            # Track this config rule
+            if rule_name not in compliance_data[pillar_name][question_number]['config_rules']:
+                compliance_data[pillar_name][question_number]['config_rules'][rule_name] = []
+            
+            compliance_data[pillar_name][question_number]['config_rules'][rule_name].append(resource_data)
+    
+    return compliance_data
+
+# Replace the original collect_compliance_data function with the optimized version
+collect_compliance_data = collect_compliance_data_optimized
