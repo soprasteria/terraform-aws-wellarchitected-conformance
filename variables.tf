@@ -37,7 +37,7 @@ variable "lambda_python_runtime" {
 variable "lambda_timeout" {
   description = "Timeout for AWS Config Custom Lambda in seconds."
   type        = number
-  default     = 60
+  default     = 300
 }
 
 variable "lambda_cloudwatch_logs_retention_in_days" {
