@@ -208,7 +208,7 @@ def get_question_details(workload_id, pillar_id, question_id):
             choice_id = choice.get('ChoiceId')
             choice_title = choice.get('Title')
 
-            logger.debug(f"get_question_details choice_id={choice_id}, choice_title={choice_title}, lens_arn={lens_arn}")
+            logger.info(f"get_question_details choice_id={choice_id}, choice_title={choice_title}, lens_arn={lens_arn}")
             if choice_id and choice_title != "None of these" and pillar_id and lens_arn:
                 # Get Trusted Advisor checks for this choice
                 ta_checks = get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, choice_id)
@@ -1163,4 +1163,5 @@ def collect_compliance_data_optimized(conformance_packs, workload_id=None):
     return compliance_data
 
 # Replace the original collect_compliance_data function with the optimized version
-collect_compliance_data = collect_compliance_data_optimized
+#collect_compliance_data = collect_compliance_data_optimized
+#collect_compliance_data = collect_compliance_data
