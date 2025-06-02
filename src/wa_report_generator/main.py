@@ -443,7 +443,7 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                 }
                 
                 # Try to get the Name tag for this resource
-                name_tag = get_resource_tags(resource_type, resource_id)
+                name_tag = get_resource_tags_with_cache(resource_type, resource_id)
                 resource_data['name_tag'] = name_tag if name_tag else "No tag"
                 
                 # Add resource to the main resources list
