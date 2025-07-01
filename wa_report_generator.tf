@@ -16,12 +16,12 @@ module "lambda_function_wa_report_generator" {
   ]
 
   environment_variables = {
-    LOG_LEVEL                       = var.lambda_log_level
-    TIMEZONE                        = var.lambda_timezone
-    SECURITY_CONFORMANCE_PACK       = var.deploy_security_conformance_pack ? var.security_conformance_pack_name : ""
-    RELIABILITY_CONFORMANCE_PACK    = var.deploy_reliability_conformance_pack ? var.reliability_conformance_pack_name : ""
+    LOG_LEVEL                          = var.lambda_log_level
+    TIMEZONE                           = var.lambda_timezone
+    SECURITY_CONFORMANCE_PACK          = var.deploy_security_conformance_pack ? var.security_conformance_pack_name : ""
+    RELIABILITY_CONFORMANCE_PACK       = var.deploy_reliability_conformance_pack ? var.reliability_conformance_pack_name : ""
     COST_OPTIMIZATION_CONFORMANCE_PACK = var.deploy_cost_optimization_conformance_pack ? var.cost_optimization_conformance_pack_name : ""
-    S3_BUCKET_NAME                  = module.wa_reports_s3_bucket.s3_bucket_id
+    S3_BUCKET_NAME                     = module.wa_reports_s3_bucket.s3_bucket_id
   }
 
   attach_policy_statements = true

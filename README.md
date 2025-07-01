@@ -188,7 +188,9 @@ You can choose between Daily or Continuous by setting the desired value for the 
 | <a name="module_lambda_function_wa_conformance_cost_03_aws_budgets"></a> [lambda\_function\_wa\_conformance\_cost\_03\_aws\_budgets](#module\_lambda\_function\_wa\_conformance\_cost\_03\_aws\_budgets) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
 | <a name="module_lambda_function_wa_conformance_cost_03_aws_cost_anomaly_detection"></a> [lambda\_function\_wa\_conformance\_cost\_03\_aws\_cost\_anomaly\_detection](#module\_lambda\_function\_wa\_conformance\_cost\_03\_aws\_cost\_anomaly\_detection) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
 | <a name="module_lambda_function_wa_conformance_cost_04_ec2_instances_without_auto_scaling"></a> [lambda\_function\_wa\_conformance\_cost\_04\_ec2\_instances\_without\_auto\_scaling](#module\_lambda\_function\_wa\_conformance\_cost\_04\_ec2\_instances\_without\_auto\_scaling) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
+| <a name="module_lambda_function_wa_report_generator"></a> [lambda\_function\_wa\_report\_generator](#module\_lambda\_function\_wa\_report\_generator) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
 | <a name="module_lambda_function_wa_tool_updater"></a> [lambda\_function\_wa\_tool\_updater](#module\_lambda\_function\_wa\_tool\_updater) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
+| <a name="module_wa_reports_s3_bucket"></a> [wa\_reports\_s3\_bucket](#module\_wa\_reports\_s3\_bucket) | git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket.git | 8a0b697adfbc673e6135c70246cff7f8052ad95a |
 
 ## Resources
 
@@ -211,7 +213,9 @@ You can choose between Daily or Continuous by setting the desired value for the 
 | [aws_iam_role.config_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role_policy.config_policy_well_architected_recorder](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy_attachment.config_role_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_kms_alias.wa_reports_kms_alias](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_alias) | resource |
 | [aws_kms_key.aws_config_well_architected_recorder_s3_bucket](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key) | resource |
+| [aws_kms_key.wa_reports_kms_key](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key) | resource |
 | [aws_lambda_permission.config_permissions](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_permission) | resource |
 | [aws_s3_object.cloudformation_wa_config_cost_optimization_template](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_object) | resource |
 | [aws_s3_object.cloudformation_wa_config_iam_template](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_object) | resource |
@@ -240,10 +244,12 @@ You can choose between Daily or Continuous by setting the desired value for the 
 | <a name="input_lambda_cloudwatch_logs_retention_in_days"></a> [lambda\_cloudwatch\_logs\_retention\_in\_days](#input\_lambda\_cloudwatch\_logs\_retention\_in\_days) | AWS Config Custom Lambda CloudWatch Logs retention in days. | `number` | `90` | no |
 | <a name="input_lambda_log_level"></a> [lambda\_log\_level](#input\_lambda\_log\_level) | Lambda log level. Valid values [DEBUG,INFO,WARNING,ERROR]. | `string` | `"INFO"` | no |
 | <a name="input_lambda_python_runtime"></a> [lambda\_python\_runtime](#input\_lambda\_python\_runtime) | Runtime for AWS Config Custom Lambda. | `string` | `"python3.12"` | no |
-| <a name="input_lambda_timeout"></a> [lambda\_timeout](#input\_lambda\_timeout) | Timeout for AWS Config Custom Lambda in seconds. | `number` | `30` | no |
+| <a name="input_lambda_timeout"></a> [lambda\_timeout](#input\_lambda\_timeout) | Timeout for AWS Config Custom Lambda in seconds. | `number` | `300` | no |
 | <a name="input_lambda_timezone"></a> [lambda\_timezone](#input\_lambda\_timezone) | Timezone for Lambda functions. Uses pytz timezone names. Default is Europe/Paris (Central European Time). | `string` | `"Europe/Paris"` | no |
 | <a name="input_recording_frequency"></a> [recording\_frequency](#input\_recording\_frequency) | AWS Config Recording Frequency. Valid options: DAILY or CONTINUOUS. | `string` | `"DAILY"` | no |
 | <a name="input_reliability_conformance_pack_name"></a> [reliability\_conformance\_pack\_name](#input\_reliability\_conformance\_pack\_name) | Name of the Reliability conformance pack | `string` | `"Well-Architected-Reliability"` | no |
+| <a name="input_reports_bucket_name_prefix"></a> [reports\_bucket\_name\_prefix](#input\_reports\_bucket\_name\_prefix) | Prefix for the S3 bucket name that stores Well-Architected compliance reports | `string` | `"well-architected-compliance-reports"` | no |
+| <a name="input_reports_retention_days"></a> [reports\_retention\_days](#input\_reports\_retention\_days) | Number of days to retain non-current versions of reports in the S3 bucket | `number` | `90` | no |
 | <a name="input_scheduled_config_custom_lambda_periodic_trigger_interval"></a> [scheduled\_config\_custom\_lambda\_periodic\_trigger\_interval](#input\_scheduled\_config\_custom\_lambda\_periodic\_trigger\_interval) | AWS Config Custom Lambda Periodic Trigger Interval. Default value of Twelve\_Hours ensures updates within the DAILY window. Valid Values: One\_Hour \| Three\_Hours \| Six\_Hours \| Twelve\_Hours \| TwentyFour\_Hours | `string` | `"Twelve_Hours"` | no |
 | <a name="input_security_conformance_pack_name"></a> [security\_conformance\_pack\_name](#input\_security\_conformance\_pack\_name) | Name of the Security conformance pack | `string` | `"Well-Architected-Security"` | no |
 
@@ -255,6 +261,10 @@ You can choose between Daily or Continuous by setting the desired value for the 
 | <a name="output_well_architected_conformance_pack_iam_arn"></a> [well\_architected\_conformance\_pack\_iam\_arn](#output\_well\_architected\_conformance\_pack\_iam\_arn) | n/a |
 | <a name="output_well_architected_conformance_pack_reliability_arn"></a> [well\_architected\_conformance\_pack\_reliability\_arn](#output\_well\_architected\_conformance\_pack\_reliability\_arn) | n/a |
 | <a name="output_well_architected_conformance_pack_security_arn"></a> [well\_architected\_conformance\_pack\_security\_arn](#output\_well\_architected\_conformance\_pack\_security\_arn) | n/a |
+| <a name="output_well_architected_report_generator_lambda_function_arn"></a> [well\_architected\_report\_generator\_lambda\_function\_arn](#output\_well\_architected\_report\_generator\_lambda\_function\_arn) | ARN of the Well-Architected Report Generator Lambda function |
+| <a name="output_well_architected_report_generator_lambda_function_name"></a> [well\_architected\_report\_generator\_lambda\_function\_name](#output\_well\_architected\_report\_generator\_lambda\_function\_name) | Name of the Well-Architected Report Generator Lambda function |
+| <a name="output_well_architected_reports_s3_bucket_arn"></a> [well\_architected\_reports\_s3\_bucket\_arn](#output\_well\_architected\_reports\_s3\_bucket\_arn) | ARN of the S3 bucket for Well-Architected compliance reports |
+| <a name="output_well_architected_reports_s3_bucket_name"></a> [well\_architected\_reports\_s3\_bucket\_name](#output\_well\_architected\_reports\_s3\_bucket\_name) | Name of the S3 bucket for Well-Architected compliance reports |
 <!-- END_TF_DOCS -->
 
 **Note**: The inputs and outputs sections are automatically generated by terraform-docs in a git pre-commit hook. This requires setup of [pre-commit-terraform](https://github.com/antonbabenko/pre-commit-terraform) . Follow the install instructions to use, including the dependencies setup. pre-commit ensures correct formatting, linting and generation of documentation. It also check's for trailing whitespace, merge conflics and mixed line endings. See [.pre-commit-config.yaml](./.pre-commit-config.yaml) for more information. A full guide to the pre-commit framework can be found [here](https://pre-commit.com/).
