@@ -372,16 +372,16 @@
             {% set pillar_not_applicable = namespace(value=0) %}
 
             {% for question_id, question_data in pillar_data.items() %}
-                {% for rule_name, rule_data in question_data.rules.items() %}
+                {% for resource in question_data.resources %}
                     {% set pillar_total.value = pillar_total.value + 1 %}
                     {% set overall_total.value = overall_total.value + 1 %}
 
-                    {% if rule_data.compliance_status == 'COMPLIANT' %}
+                    {% if resource.compliance_status == 'COMPLIANT' %}
                         {% set pillar_compliant.value = pillar_compliant.value + 1 %}
                         {% set overall_compliant.value = overall_compliant.value + 1 %}
-                    {% elif rule_data.compliance_status == 'NON_COMPLIANT' %}
+                    {% elif resource.compliance_status == 'NON_COMPLIANT' %}
                         {% set pillar_non_compliant.value = pillar_non_compliant.value + 1 %}
-                    {% elif rule_data.compliance_status == 'NOT_APPLICABLE' %}
+                    {% elif resource.compliance_status == 'NOT_APPLICABLE' %}
                         {% set pillar_not_applicable.value = pillar_not_applicable.value + 1 %}
                     {% endif %}
                 {% endfor %}
