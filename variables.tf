@@ -1,3 +1,9 @@
+variable "deploy_aws_config_recorder" {
+  description = "Set to true to deploy an AWS Config Recorder. If you already have a customer managed AWS Config recorder in the desired region, set to false. AWS supports only one customer managed configuration recorder for each account for each AWS Region."
+  type        = bool
+  default     = true
+}
+
 variable "recording_frequency" {
   description = "AWS Config Recording Frequency. Valid options: DAILY or CONTINUOUS."
   type        = string
