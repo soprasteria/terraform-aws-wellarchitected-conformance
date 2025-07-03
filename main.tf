@@ -6,8 +6,7 @@ resource "aws_config_delivery_channel" "well_architected" {
   depends_on     = [aws_config_configuration_recorder.well_architected]
 }
 
-resource "aws_kms_key" "aws_config_well_architected_recorder_s3_bucket" {
-  count                   = var.deploy_aws_config_recorder ? 1 : 0
+resource "aws_kms_key" "aws_config_well_architected_recorder_kms_key" {
   description             = "KMS key for S3 bucket aws-config-recorder-module-${local.aws_account_id}"
   is_enabled              = true
   enable_key_rotation     = true
@@ -46,11 +45,11 @@ module "aws_config_well_architected_recorder_s3_bucket" {
   versioning = {
     enabled = true
   }
-  allowed_kms_key_arn = aws_kms_key.aws_config_well_architected_recorder_s3_bucket[0].arn
+  allowed_kms_key_arn = aws_kms_key.aws_config_well_architected_recorder_kms_key.arn
   server_side_encryption_configuration = {
     rule = {
       apply_server_side_encryption_by_default = {
-        kms_master_key_id = aws_kms_key.aws_config_well_architected_recorder_s3_bucket[0].arn
+        kms_master_key_id = aws_kms_key.aws_config_well_architected_recorder_kms_key.arn
         sse_algorithm     = "aws:kms"
       }
     }
