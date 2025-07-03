@@ -46,11 +46,11 @@ module "aws_config_well_architected_recorder_s3_bucket" {
   versioning = {
     enabled = true
   }
-  allowed_kms_key_arn = aws_kms_key.aws_config_well_architected_recorder_s3_bucket.arn
+  allowed_kms_key_arn = aws_kms_key.aws_config_well_architected_recorder_s3_bucket[0].arn
   server_side_encryption_configuration = {
     rule = {
       apply_server_side_encryption_by_default = {
-        kms_master_key_id = aws_kms_key.aws_config_well_architected_recorder_s3_bucket.arn
+        kms_master_key_id = aws_kms_key.aws_config_well_architected_recorder_s3_bucket[0].arn
         sse_algorithm     = "aws:kms"
       }
     }
@@ -91,46 +91,6 @@ resource "aws_config_configuration_recorder_status" "well_architected" {
   depends_on = [aws_config_delivery_channel.well_architected]
 }
 
-data "aws_iam_policy_document" "well_architected_config_assume_role" {
-  count = var.deploy_aws_config_recorder ? 1 : 0
-  statement {
-    effect = "Allow"
-    principals {
-      type        = "Service"
-      identifiers = ["config.amazonaws.com"]
-    }
-    actions = ["sts:AssumeRole"]
-    condition {
-      test     = "StringEquals"
-      variable = "AWS:SourceAccount"
-      values   = [local.aws_account_id]
-    }
-  }
-}
-
-data "aws_iam_policy_document" "config_policy_well_architected_recorder" {
-  count = var.deploy_aws_config_recorder ? 1 : 0
-  statement {
-    effect  = "Allow"
-    actions = ["s3:PutObject", "s3:PutObjectAcl"]
-    resources = [
-      "${module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_arn}/*"
-    ]
-    condition {
-      test     = "StringEquals"
-      variable = "s3:x-amz-acl"
-      values   = ["bucket-owner-full-control"]
-    }
-  }
-  statement {
-    effect  = "Allow"
-    actions = ["s3:GetBucketAcl"]
-    resources = [
-      module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_arn
-    ]
-  }
-}
-
 resource "aws_iam_role_policy" "config_policy_well_architected_recorder" {
   count  = var.deploy_aws_config_recorder ? 1 : 0
   role   = aws_iam_role.config_role.id
@@ -147,7 +107,7 @@ resource "aws_iam_role_policy_attachment" "config_role_attachment" {
 resource "aws_iam_role" "config_role" {
   count              = var.deploy_aws_config_recorder ? 1 : 0
   name               = "well-architected-config-conformance-pack-role"
-  assume_role_policy = data.aws_iam_policy_document.well_architected_config_assume_role.json
+  assume_role_policy = data.aws_iam_policy_document.well_architected_config_assume_role[0].json
 }
 
 # Render templates to file on S3 to avoid template_body file limitation of 51,200 bytes

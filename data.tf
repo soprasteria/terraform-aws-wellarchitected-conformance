@@ -1,6 +1,46 @@
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
+data "aws_iam_policy_document" "well_architected_config_assume_role" {
+  count = var.deploy_aws_config_recorder ? 1 : 0
+  statement {
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["config.amazonaws.com"]
+    }
+    actions = ["sts:AssumeRole"]
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceAccount"
+      values   = [local.aws_account_id]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "config_policy_well_architected_recorder" {
+  count = var.deploy_aws_config_recorder ? 1 : 0
+  statement {
+    effect  = "Allow"
+    actions = ["s3:PutObject", "s3:PutObjectAcl"]
+    resources = [
+      "${module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_arn}/*"
+    ]
+    condition {
+      test     = "StringEquals"
+      variable = "s3:x-amz-acl"
+      values   = ["bucket-owner-full-control"]
+    }
+  }
+  statement {
+    effect  = "Allow"
+    actions = ["s3:GetBucketAcl"]
+    resources = [
+      module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_arn
+    ]
+  }
+}
+
 data "http" "template_body_wa_security_pillar" {
   url = local.url_template_body_wa_security_pillar
 }
