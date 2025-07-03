@@ -86,7 +86,7 @@ resource "aws_config_retention_configuration" "well_architected" {
 # Manages status (recording / stopped) of an AWS Config Configuration Recorder.
 resource "aws_config_configuration_recorder_status" "well_architected" {
   count      = var.deploy_aws_config_recorder ? 1 : 0
-  name       = aws_config_configuration_recorder.well_architected.name
+  name       = aws_config_configuration_recorder.well_architected[0].name
   is_enabled = true
   depends_on = [aws_config_delivery_channel.well_architected]
 }
