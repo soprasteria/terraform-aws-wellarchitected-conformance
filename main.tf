@@ -181,14 +181,12 @@ resource "aws_config_conformance_pack" "well_architected_conformance_pack_securi
   count           = var.deploy_security_conformance_pack ? 1 : 0
   name            = "Well-Architected-Security"
   template_s3_uri = "s3://${module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_id}/${aws_s3_object.cloudformation_wa_config_security_template.key}"
-  depends_on      = [aws_config_configuration_recorder.well_architected]
 }
 
 resource "aws_config_conformance_pack" "well_architected_conformance_pack_reliability" {
   count           = var.deploy_reliability_conformance_pack ? 1 : 0
   name            = "Well-Architected-Reliability"
   template_s3_uri = "s3://${module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_id}/${aws_s3_object.cloudformation_wa_config_reliability_template.key}"
-  depends_on      = [aws_config_configuration_recorder.well_architected]
 
   lifecycle {
     replace_triggered_by = [
@@ -201,7 +199,6 @@ resource "aws_config_conformance_pack" "well_architected_conformance_pack_iam" {
   count           = var.deploy_iam_conformance_pack ? 1 : 0
   name            = "Well-Architected-IAM"
   template_s3_uri = "s3://${module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_id}/${aws_s3_object.cloudformation_wa_config_iam_template.key}"
-  depends_on      = [aws_config_configuration_recorder.well_architected]
 
   lifecycle {
     replace_triggered_by = [
@@ -214,11 +211,4 @@ resource "aws_config_conformance_pack" "well_architected_conformance_pack_cost_o
   count           = var.deploy_cost_optimization_conformance_pack ? 1 : 0
   name            = "Well-Architected-Cost-Optimization"
   template_s3_uri = "s3://${module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_id}/${aws_s3_object.cloudformation_wa_config_cost_optimization_template.key}"
-  depends_on      = [aws_config_configuration_recorder.well_architected]
-
-  #  lifecycle {
-  #    replace_triggered_by = [
-  #      aws_s3_object.cloudformation_wa_config_cost_optimization_template.etag
-  #    ]
-  #  }
 }
