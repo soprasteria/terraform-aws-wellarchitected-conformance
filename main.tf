@@ -65,7 +65,7 @@ module "aws_config_well_architected_recorder_s3_bucket" {
 resource "aws_config_configuration_recorder" "well_architected" {
   count    = var.deploy_aws_config_recorder ? 1 : 0
   name     = "well-architected"
-  role_arn = aws_iam_role.config_role.arn
+  role_arn = aws_iam_role.config_role[0].arn
 
   recording_group {
     all_supported                 = true
@@ -93,14 +93,14 @@ resource "aws_config_configuration_recorder_status" "well_architected" {
 
 resource "aws_iam_role_policy" "config_policy_well_architected_recorder" {
   count  = var.deploy_aws_config_recorder ? 1 : 0
-  role   = aws_iam_role.config_role.id
+  role   = aws_iam_role.config_role[0].id
   name   = "well-architected-config-conformance-packs-policy"
-  policy = data.aws_iam_policy_document.config_policy_well_architected_recorder.json
+  policy = data.aws_iam_policy_document.config_policy_well_architected_recorder[0].json
 }
 
 resource "aws_iam_role_policy_attachment" "config_role_attachment" {
   count      = var.deploy_aws_config_recorder ? 1 : 0
-  role       = aws_iam_role.config_role.name
+  role       = aws_iam_role.config_role[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWS_ConfigRole"
 }
 
