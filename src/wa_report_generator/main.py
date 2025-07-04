@@ -582,7 +582,6 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
                 'id': check_id,
                 'name': check.get('Name', ''),
                 'description': check.get('Description', ''),
-                'provider': check.get('Provider', ''),
                 'status': status_info.get('status', 'UNKNOWN')
             })
         logger.info(f"Trusted Advisor compliance status mapping: {compliance_status}")

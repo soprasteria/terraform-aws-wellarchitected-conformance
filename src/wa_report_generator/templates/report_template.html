@@ -58,7 +58,7 @@
             color: green;
             font-weight: bold;
         }
-        .non-compliant {
+        .non-compliant, .non_compliant {
             color: red;
             font-weight: bold;
         }
@@ -197,8 +197,13 @@
         .trusted-advisor h4 {
             margin-top: 0;
             margin-bottom: 5px;
-            color: #ff9900;
             font-size: 0.95em;
+        }
+        .ta-description {
+            max-width: 200px;
+            font-size: 0.8em;
+            line-height: 1.3;
+            word-wrap: break-word;
         }
         .question-description {
             margin: 10px 0 15px 0;
@@ -585,7 +590,6 @@
                                     <thead>
                                         <tr>
                                             <th>Check Name</th>
-                                            <th>Provider</th>
                                             <th>Status</th>
                                             <th>Description</th>
                                         </tr>
@@ -594,9 +598,8 @@
                                         {% for check in choice_data.trusted_advisor_checks %}
                                             <tr>
                                                 <td>{{ check.name }}</td>
-                                                <td>{{ check.provider }}</td>
                                                 <td class="{{ check.status | lower }}">{{ check.status }}</td>
-                                                <td>{{ check.description | safe }}</td>
+                                                <td class="ta-description">{{ check.description | safe | replace('<br><br>', '<br>') }}</td>
                                             </tr>
                                         {% endfor %}
                                     </tbody>
