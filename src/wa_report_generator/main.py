@@ -569,8 +569,9 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
                 logger.debug(f"Id: {summary.get('Id')}, Status: {summary.get('Status')}, Check summary: {summary}")
                 if check_id := summary.get('Id'):
                     status = summary.get('Status')
+                    status_mapping = {'OKAY': 'COMPLIANT', 'ERROR': 'NON_COMPLIANT', 'WARNING': 'NON_COMPLIANT'}
                     compliance_status[check_id] = {
-                        'status': 'COMPLIANT' if status == 'OKAY' else 'NON_COMPLIANT' if status == 'ERROR' or 'WARNING' else status
+                        'status': status_mapping.get(status, status)
                     }
                 else:
                     logger.info(f"No Check ID for summary: {summary}")
@@ -581,6 +582,9 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
         for check in check_details:
             check_id = check.get('Id')
             status_info = compliance_status.get(check_id, {})
+            # Skip non-relevant checks with no resources
+            if status_info.get('status') == 'NOT_AVAILABLE':
+                continue
             result.append({
                 'id': check_id,
                 'name': check.get('Name', ''),
