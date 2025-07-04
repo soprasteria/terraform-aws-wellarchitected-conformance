@@ -572,14 +572,21 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
         except Exception as e:
             logger.debug(f"Check summaries unavailable: {e}")
 
-        return [{
-            'id': check.get('Id'),
-            'name': check.get('Name', ''),
-            'description': check.get('Description', ''),
-            'provider': check.get('Provider', ''),
-            'status': compliance_status.get(check.get('Id'), {}).get('status', 'UNKNOWN'),
-            'risk': compliance_status.get(check.get('Id'), {}).get('risk', 'UNKNOWN')
-        } for check in check_details]
+        result = []
+        for check in check_details:
+            check_id = check.get('Id')
+            status_info = compliance_status.get(check_id, {})
+            logger.info(f"Check ID: {check_id}, Status lookup: {status_info}")
+            result.append({
+                'id': check_id,
+                'name': check.get('Name', ''),
+                'description': check.get('Description', ''),
+                'provider': check.get('Provider', ''),
+                'status': status_info.get('status', 'UNKNOWN'),
+                'risk': status_info.get('risk', 'UNKNOWN')
+            })
+        logger.info(f"Compliance status mapping: {compliance_status}")
+        return result
 
     except Exception as e:
         logger.warning(f"Could not retrieve Trusted Advisor checks: {e}")
