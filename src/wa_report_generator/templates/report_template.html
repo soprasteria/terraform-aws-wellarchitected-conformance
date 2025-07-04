@@ -204,11 +204,11 @@
         }
         .config-rule-section table th:nth-child(1),
         .trusted-advisor table th:nth-child(1) {
-            width: 15%;
+            width: 8%;
         }
         .config-rule-section table th:nth-child(2),
         .trusted-advisor table th:nth-child(2) {
-            width: 15%;
+            width: 20%;
         }
         .config-rule-section table th:nth-child(3),
         .trusted-advisor table th:nth-child(3) {
@@ -216,7 +216,7 @@
         }
         .config-rule-section table th:nth-child(4),
         .trusted-advisor table th:nth-child(4) {
-            width: 55%;
+            width: 57%;
         }
         .question-description {
             margin: 10px 0 15px 0;
@@ -635,8 +635,8 @@
                                     <tr>
                                         <th>Resource Type</th>
                                         <th>Resource ID</th>
-                                        <th>Tag Name</th>
                                         <th>Status</th>
+                                        <th>Tag Name</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -644,10 +644,10 @@
                                         <tr>
                                             <td>{{ resource.resource_type }}</td>
                                             <td class="resource-id">{{ resource.resource_id }}</td>
-                                            <td class="resource-tag">{{ resource.name_tag }}</td>
                                             <td class="{{ 'compliant' if resource.compliance_status == 'COMPLIANT' else 'non-compliant' }}">
                                                 {{ resource.compliance_status }}
                                             </td>
+                                            <td class="resource-tag">{{ resource.name_tag }}</td>
                                         </tr>
                                     {% endfor %}
                                 </tbody>
