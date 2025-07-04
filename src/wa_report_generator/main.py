@@ -565,7 +565,8 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
             logger.info(f"Summaries response: {summaries_response}")
 
             for summary in summaries_response.get('CheckSummaries', []):
-                logger.info("summary: {summary}")
+                logger.info(f"summary: {summary}")
+                logger.info(f"check_id.get: {summary.get('CheckId')}")
                 if check_id := summary.get('CheckId'):
                     logger.info("check_id: {check_id}")
                     compliance_status[check_id] = {
@@ -577,6 +578,7 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
 
         result = []
         for check in check_details:
+            logger.info("check: {check}}")
             check_id = check.get('Id')
             status_info = compliance_status.get(check_id, {})
             logger.info(f"Check ID: {check_id}, Status lookup: {status_info}")
