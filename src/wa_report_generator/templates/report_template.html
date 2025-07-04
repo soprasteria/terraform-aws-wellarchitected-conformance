@@ -595,21 +595,11 @@
                                         {% for check in choice_data.trusted_advisor_checks %}
                                             <tr>
                                                 <td>{{ check.name }}</td>
-                                                <td>{{ check.provider_name }}</td>
+                                                <td>{{ check.provider }}</td>
                                                 <td class="{{ check.status | lower }}">{{ check.status }}</td>
                                                 <td class="{{ check.risk | lower }}">{{ check.risk }}</td>
                                                 <td>{{ check.description | safe }}</td>
                                             </tr>
-                                            {% if check.reason %}
-                                            <tr>
-                                                <td colspan="5" class="check-reason">
-                                                    <strong>Reason:</strong> {{ check.reason }}
-                                                    {% if check.flagged_resources > 0 %}
-                                                    <br><strong>Flagged Resources:</strong> {{ check.flagged_resources }}
-                                                    {% endif %}
-                                                </td>
-                                            </tr>
-                                            {% endif %}
                                         {% endfor %}
                                     </tbody>
                                 </table>
