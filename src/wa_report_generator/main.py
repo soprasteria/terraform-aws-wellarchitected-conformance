@@ -603,7 +603,7 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
                 'updated_at': status_info.get('updated_at', '')
             })
 
-        logger.debug(f"get_trusted_advisor_checks returned: {check_details}")
+        logger.info(f"get_trusted_advisor_checks returned: {check_details}")
         return check_details
 
     except Exception as e:
@@ -728,6 +728,7 @@ def check_business_support_enabled():
     except Exception as e:
         logger.warning(f"Error checking AWS Support subscription: {e}")
         return None, f"Could not determine AWS Support subscription status: {str(e)}"
+
 def get_resource_tags(resource_type, resource_id):
     """
     Get tags for a specific AWS resource, focusing on the Name tag.
