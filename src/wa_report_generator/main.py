@@ -566,13 +566,14 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
             logger.debug(f"Summaries response: {summaries_response}")
 
             for summary in summaries_response.get('CheckSummaries', []):
+                logger.debug(f"Id: {summary.get('Id')}, Status: {summary.get('Status')}, Check summary: {summary}")
                 if check_id := summary.get('Id'):
                     status = summary.get('Status')
-                    if status == 'NOT_AVAILABLE':
-                        continue
                     compliance_status[check_id] = {
                         'status': 'COMPLIANT' if status == 'OKAY' else 'NON_COMPLIANT' if status == 'ERROR' or 'WARNING' else status
                     }
+                else:
+                    logger.info(f"No Check ID for summary: {summary}")
         except Exception as e:
             logger.debug(f"Check summaries unavailable: {e}")
 
@@ -584,7 +585,7 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
                 'id': check_id,
                 'name': check.get('Name', ''),
                 'description': check.get('Description', ''),
-                'status': status_info.get('status', 'UNKNOWN')
+                'status': status_info.get('status', '')
             })
         logger.info(f"Trusted Advisor compliance status mapping: {compliance_status}")
         return result

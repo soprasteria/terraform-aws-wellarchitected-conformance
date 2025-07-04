@@ -614,7 +614,7 @@
                                                 <td>{{ check.id }}</td>
                                                 <td>{{ check.name }}</td>
                                                 <td class="{{ check.status | lower }}">{{ check.status }}</td>
-                                                <td class="ta-description">{{ check.description }}</td>
+                                                <td class="ta-description">{{ check.description | safe }}</td>
                                             </tr>
                                         {% endfor %}
                                     </tbody>
