@@ -545,12 +545,13 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
             QuestionId=question_id,
             ChoiceId=choice_id
         )
-        logger.info(f"Details response: {details_response}")
+        logger.debug(f"Details response: {details_response}")
 
         check_details = details_response.get('CheckDetails', [])
         if not check_details:
             return []
 
+        logger.info(f"Check details response: {check_details}")
         # Try to get summaries, but don't fail if it doesn't work
         compliance_status = {}
         try:
@@ -564,7 +565,9 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
             logger.info(f"Summaries response: {summaries_response}")
 
             for summary in summaries_response.get('CheckSummaries', []):
+                logger.info("summary: {summary}")
                 if check_id := summary.get('CheckId'):
+                    logger.info("check_id: {check_id}")
                     compliance_status[check_id] = {
                         'status': summary.get('Status', 'UNKNOWN'),
                         'risk': summary.get('Risk', 'UNKNOWN')
