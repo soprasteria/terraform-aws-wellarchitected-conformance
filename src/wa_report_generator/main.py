@@ -536,20 +536,8 @@ def upload_report_to_s3(html_content, bucket_name, dry_run=False):
 def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, choice_id):
     """
     Get Trusted Advisor check details and compliance status for a specific pillar and choice.
-
-    Args:
-        workload_id: The Well-Architected workload ID
-        lens_arn: The ARN of the lens
-        pillar_id: The ID of the pillar
-        question_id: The ID of the question
-        choice_id: The ID of the choice
-
-    Returns:
-        List of Trusted Advisor check details with compliance status
     """
-
     try:
-        # Get Trusted Advisor check details
         details_response = wellarchitected_client.list_check_details(
             WorkloadId=workload_id,
             LensArn=lens_arn,
@@ -557,8 +545,14 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
             QuestionId=question_id,
             ChoiceId=choice_id
         )
+        logger.info(f"Details response: {details_response}")
 
-        # Get check summaries for compliance status
+        check_details = details_response.get('CheckDetails', [])
+        if not check_details:
+            return []
+
+        # Try to get summaries, but don't fail if it doesn't work
+        compliance_status = {}
         try:
             summaries_response = wellarchitected_client.list_check_summaries(
                 WorkloadId=workload_id,
@@ -567,47 +561,28 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
                 QuestionId=question_id,
                 ChoiceId=choice_id
             )
+            logger.info(f"Summaries response: {summaries_response}")
 
-            # Create a mapping of check IDs to their compliance status
-            compliance_status = {}
             for summary in summaries_response.get('CheckSummaries', []):
-                check_id = summary.get('CheckId')
-                if check_id:
+                if check_id := summary.get('CheckId'):
                     compliance_status[check_id] = {
-                        'status': summary.get('Status'),
-                        'risk': summary.get('Risk'),
-                        'reason': summary.get('Reason', ''),
-                        'flagged_resources': summary.get('FlaggedResources', 0),
-                        'updated_at': summary.get('UpdatedAt', '')
+                        'status': summary.get('Status', 'UNKNOWN'),
+                        'risk': summary.get('Risk', 'UNKNOWN')
                     }
-            logger.debug(f"Got compliance status for {len(compliance_status)} checks")
         except Exception as e:
-            logger.warning(f"Could not retrieve check summaries: {e}")
-            compliance_status = {}
+            logger.debug(f"Check summaries unavailable: {e}")
 
-        check_details = []
-        for check in details_response.get('CheckDetails', []):
-            check_id = check.get('Id')
-            status_info = compliance_status.get(check_id, {})
-
-            check_details.append({
-                'id': check_id,
-                'name': check.get('Name', ''),
-                'description': check.get('Description', ''),
-                'provider': check.get('Provider', ''),
-                'provider_name': check.get('ProviderName', ''),
-                'status': status_info.get('status', 'UNKNOWN'),
-                'risk': status_info.get('risk', 'UNKNOWN'),
-                'reason': status_info.get('reason', ''),
-                'flagged_resources': status_info.get('flagged_resources', 0),
-                'updated_at': status_info.get('updated_at', '')
-            })
-
-        logger.info(f"get_trusted_advisor_checks returned: {check_details}")
-        return check_details
+        return [{
+            'id': check.get('Id'),
+            'name': check.get('Name', ''),
+            'description': check.get('Description', ''),
+            'provider': check.get('Provider', ''),
+            'status': compliance_status.get(check.get('Id'), {}).get('status', 'UNKNOWN'),
+            'risk': compliance_status.get(check.get('Id'), {}).get('risk', 'UNKNOWN')
+        } for check in check_details]
 
     except Exception as e:
-        logger.warning(f"Could not retrieve Trusted Advisor check details for pillar {pillar_id}, question_id {question_id}, choice {choice_id}: {e}")
+        logger.warning(f"Could not retrieve Trusted Advisor checks: {e}")
         return []
 
 def lambda_handler(event, context):
