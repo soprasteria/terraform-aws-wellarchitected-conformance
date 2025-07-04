@@ -567,15 +567,11 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
 
             for summary in summaries_response.get('CheckSummaries', []):
                 if check_id := summary.get('Id'):
-                    logger.info(f"Summary: {summary}")
-                    status = summary.get('Status', 'UNKNOWN')
-                    # Skip non-relevant checks if there are no resources in scope anyway.
-                    #if status == 'UNKNOWN':
-                    #    logger.info(f"Check status UNKNOWN: {summary}")
+                    status = summary.get('Status')
                     if status == 'NOT_AVAILABLE':
                         continue
                     compliance_status[check_id] = {
-                        'status': 'COMPLIANT' if status == 'OKAY' else 'NON_COMPLIANT' if status == 'ERROR' else status
+                        'status': 'COMPLIANT' if status == 'OKAY' else 'NON_COMPLIANT' if status == 'ERROR' or 'WARNING' else status
                     }
         except Exception as e:
             logger.debug(f"Check summaries unavailable: {e}")
