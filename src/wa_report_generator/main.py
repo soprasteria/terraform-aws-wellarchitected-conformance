@@ -551,7 +551,7 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
         if not check_details:
             return []
 
-        logger.info(f"Check details response: {check_details}")
+        logger.debug(f"Trusted Advisor check details response: {check_details}")
         # Try to get summaries, but don't fail if it doesn't work
 
         compliance_status = {}
@@ -566,32 +566,25 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
             logger.debug(f"Summaries response: {summaries_response}")
 
             for summary in summaries_response.get('CheckSummaries', []):
-                logger.info(f"summary: {summary}")
-                logger.info(f"check_id.get: {summary.get('Id')}")
                 if check_id := summary.get('Id'):
-                    logger.info("check_id: {check_id}")
                     compliance_status[check_id] = {
-                        'status': summary.get('Status', 'UNKNOWN'),
-                        'risk': summary.get('Risk', 'UNKNOWN')
+                        'status': summary.get('Status', 'UNKNOWN')
                     }
         except Exception as e:
             logger.debug(f"Check summaries unavailable: {e}")
 
         result = []
         for check in check_details:
-            logger.info(f"check: {check}")
             check_id = check.get('Id')
             status_info = compliance_status.get(check_id, {})
-            logger.info(f"Check ID: {check_id}, Status lookup: {status_info}")
             result.append({
                 'id': check_id,
                 'name': check.get('Name', ''),
                 'description': check.get('Description', ''),
                 'provider': check.get('Provider', ''),
-                'status': status_info.get('status', 'UNKNOWN'),
-                'risk': status_info.get('risk', 'UNKNOWN')
+                'status': status_info.get('status', 'UNKNOWN')
             })
-        logger.info(f"Compliance status mapping: {compliance_status}")
+        logger.info(f"Trusted Advisor compliance status mapping: {compliance_status}")
         return result
 
     except Exception as e:

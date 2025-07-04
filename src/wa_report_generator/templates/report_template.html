@@ -587,7 +587,6 @@
                                             <th>Check Name</th>
                                             <th>Provider</th>
                                             <th>Status</th>
-                                            <th>Risk</th>
                                             <th>Description</th>
                                         </tr>
                                     </thead>
@@ -597,7 +596,6 @@
                                                 <td>{{ check.name }}</td>
                                                 <td>{{ check.provider }}</td>
                                                 <td class="{{ check.status | lower }}">{{ check.status }}</td>
-                                                <td class="{{ check.risk | lower }}">{{ check.risk }}</td>
                                                 <td>{{ check.description | safe }}</td>
                                             </tr>
                                         {% endfor %}
