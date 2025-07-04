@@ -553,6 +553,7 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
 
         logger.info(f"Check details response: {check_details}")
         # Try to get summaries, but don't fail if it doesn't work
+
         compliance_status = {}
         try:
             summaries_response = wellarchitected_client.list_check_summaries(
@@ -562,12 +563,12 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
                 QuestionId=question_id,
                 ChoiceId=choice_id
             )
-            logger.info(f"Summaries response: {summaries_response}")
+            logger.debug(f"Summaries response: {summaries_response}")
 
             for summary in summaries_response.get('CheckSummaries', []):
                 logger.info(f"summary: {summary}")
-                logger.info(f"check_id.get: {summary.get('CheckId')}")
-                if check_id := summary.get('CheckId'):
+                logger.info(f"check_id.get: {summary.get('Id')}")
+                if check_id := summary.get('Id'):
                     logger.info("check_id: {check_id}")
                     compliance_status[check_id] = {
                         'status': summary.get('Status', 'UNKNOWN'),
@@ -578,7 +579,7 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
 
         result = []
         for check in check_details:
-            logger.info("check: {check}}")
+            logger.info(f"check: {check}}")
             check_id = check.get('Id')
             status_info = compliance_status.get(check_id, {})
             logger.info(f"Check ID: {check_id}, Status lookup: {status_info}")
