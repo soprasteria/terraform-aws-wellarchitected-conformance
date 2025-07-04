@@ -569,7 +569,7 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
                 if check_id := summary.get('Id'):
                     status = summary.get('Status', 'UNKNOWN')
                     compliance_status[check_id] = {
-                        'status': 'OK' if status == 'OKAY' else status
+                        'status': 'COMPLIANT' if status == 'OKAY' else 'NON_COMPLIANT' if status == 'ERROR' else status
                     }
         except Exception as e:
             logger.debug(f"Check summaries unavailable: {e}")
