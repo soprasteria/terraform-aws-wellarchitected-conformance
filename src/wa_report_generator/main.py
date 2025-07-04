@@ -579,7 +579,7 @@ def get_trusted_advisor_checks(workload_id, lens_arn, pillar_id, question_id, ch
 
         result = []
         for check in check_details:
-            logger.info(f"check: {check}}")
+            logger.info(f"check: {check}")
             check_id = check.get('Id')
             status_info = compliance_status.get(check_id, {})
             logger.info(f"Check ID: {check_id}, Status lookup: {status_info}")
