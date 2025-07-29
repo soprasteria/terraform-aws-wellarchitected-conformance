@@ -30,6 +30,12 @@ resource "aws_kms_key" "aws_config_well_architected_recorder_kms_key" {
 POLICY
 }
 
+# KMS key alias for easier identification
+resource "aws_kms_alias" "config_well_architected_recorder_kms_alias" {
+  name          = "alias/wa-config-recorder-key"
+  target_key_id = aws_kms_key.aws_config_well_architected_recorder_kms_key.key_id
+}
+
 # Provision Amazon S3 bucket regardless of existing or new AWS Config recorder, as this bucket will be used for AWS Config Conformance pack templates as well.
 module "aws_config_well_architected_recorder_s3_bucket" {
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket.git?ref=8a0b697adfbc673e6135c70246cff7f8052ad95a"
