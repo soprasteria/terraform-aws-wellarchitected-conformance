@@ -182,7 +182,7 @@
             font-size: 0.85em;
         }
         .resource-id {
-            max-width: 300px;
+            max-width: 600px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -208,15 +208,15 @@
         }
         .config-rule-section table th:nth-child(2),
         .trusted-advisor table th:nth-child(2) {
-            width: 20%;
+            width: 24%;
         }
         .config-rule-section table th:nth-child(3),
         .trusted-advisor table th:nth-child(3) {
-            width: 7%;
+            width: 8%;
         }
         .config-rule-section table th:nth-child(4),
         .trusted-advisor table th:nth-child(4) {
-            width: 65%;
+            width: 60%;
         }
         .question-description {
             margin: 10px 0 15px 0;
@@ -447,7 +447,7 @@
         <div class="overall-score">
             <h3>Overall Compliance Score</h3>
             <div class="overall-percentage">{{ "%.1f"|format(overall_percentage) }}%</div>
-            <p>{{ overall_compliant.value }} of {{ overall_total.value }} checks passing across all pillars</p>
+            <p>{{ overall_compliant.value }} of {{ overall_total.value }} checks passing across available pillars</p>
         </div>
 
         <!-- Pillar Summary Cards -->
