@@ -228,6 +228,32 @@
             font-size: 0.95em;
             line-height: 1.5;
         }
+        .further-guidance {
+            margin: 10px 0 15px 0;
+            padding: 10px;
+            background-color: #e8f4fd;
+            border-left: 3px solid #0066cc;
+            color: #333;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        .further-guidance h4 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: #0066cc;
+            font-size: 1em;
+        }
+        .further-guidance p {
+            margin: 0;
+        }
+        .further-guidance a {
+            color: #0066cc;
+            text-decoration: none;
+            word-break: break-all;
+        }
+        .further-guidance a:hover {
+            text-decoration: underline;
+        }
         .check-reason {
             background-color: #f9f9f9;
             font-size: 0.9em;
@@ -574,6 +600,14 @@
                 {% if question_data.description %}
                 <div class="question-description">
                     {{ question_data.description }}
+                </div>
+                {% endif %}
+
+                <!-- Further Guidance -->
+                {% if question_data.guidance_link %}
+                <div class="further-guidance">
+                    <h4>📖 Further Guidance:</h4>
+                    <p><a href="{{ question_data.guidance_link }}" target="_blank">{{ question_data.guidance_link }}</a></p>
                 </div>
                 {% endif %}
 

@@ -113,6 +113,37 @@ def get_rule_details(rule_name):
         logger.error(f"Error getting rule details: {e}")
         return []
 
+def generate_guidance_link(question_id):
+    """
+    Generate a Well-Architected Framework documentation link for a question ID.
+
+    Args:
+        question_id: The question ID (e.g., "COST03", "SEC01", "REL02")
+
+    Returns:
+        String URL to the Well-Architected Framework documentation
+    """
+    if not question_id:
+        return ""
+
+    # Convert question ID to lowercase and add hyphen (e.g., COST03 -> cost-03)
+    # Handle both formats: COST03 and COST_03
+    question_id_clean = question_id.replace('_', '')
+
+    # Extract pillar prefix and number
+    import re
+    match = re.match(r'^([A-Z]+)(\d+)$', question_id_clean.upper())
+    if not match:
+        return ""
+
+    pillar_prefix = match.group(1).lower()
+    question_number = match.group(2)
+
+    # Format as pillar-number (e.g., cost-03)
+    formatted_id = f"{pillar_prefix}-{question_number.zfill(2)}"
+
+    return f"https://docs.aws.amazon.com/wellarchitected/latest/framework/{formatted_id}.html"
+
 def extract_question_id(rule_name):
     """
     Extract QuestionId from an AWS Config rule name.
@@ -322,7 +353,8 @@ def get_question_titles_and_choices_fallback(workload_id):
                             'helpful_resources': helpful_resources,
                             'choices': choices,
                             'full_id': question_id,  # Store the original ID for reference
-                            'actual_id': actual_question_id  # Store the extracted actual ID part
+                            'actual_id': actual_question_id,  # Store the extracted actual ID part
+                            'guidance_link': generate_guidance_link(ordered_id)
                         }
                         logger.debug(f"Mapped ordered ID {ordered_id} to question {question_id} with actual_id {actual_question_id}")
 
@@ -411,7 +443,8 @@ def collect_compliance_data(conformance_packs, workload_id=None):
                     'helpful_resources': [],
                     'resources': [],
                     'config_rules': {},
-                    'actual_question_id': actual_question_id
+                    'actual_question_id': actual_question_id,
+                    'guidance_link': generate_guidance_link(question_number)
                 }
 
                 # If we have a workload_id and actual_question_id, try to get question details
