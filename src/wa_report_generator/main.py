@@ -736,7 +736,7 @@ def check_business_support_enabled():
 
         # If we get here, Business or Enterprise Support is enabled
         logger.info("AWS Business or Enterprise Support is enabled")
-        return True, "AWS Business or Enterprise Support is enabled. The full set of Trusted Advisor checks is available."
+        return True, "AWS Business or Enterprise Support is enabled, full set of Trusted Advisor checks are available."
 
     except ClientError as e:
         error_code = e.response.get('Error', {}).get('Code')
