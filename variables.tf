@@ -1,3 +1,9 @@
+variable "deploy_aws_config_recorder" {
+  description = "Set to true to deploy an AWS Config Recorder. If you already have a customer managed AWS Config recorder in the desired region, set to false. AWS supports only one customer managed configuration recorder for each account for each AWS Region."
+  type        = bool
+  default     = true
+}
+
 variable "recording_frequency" {
   description = "AWS Config Recording Frequency. Valid options: DAILY or CONTINUOUS."
   type        = string
@@ -37,7 +43,7 @@ variable "lambda_python_runtime" {
 variable "lambda_timeout" {
   description = "Timeout for AWS Config Custom Lambda in seconds."
   type        = number
-  default     = 30
+  default     = 300
 }
 
 variable "lambda_cloudwatch_logs_retention_in_days" {
@@ -86,4 +92,16 @@ variable "cost_optimization_conformance_pack_name" {
   description = "Name of the Cost Optimization conformance pack"
   type        = string
   default     = "Well-Architected-Cost-Optimization"
+}
+
+variable "reports_bucket_name_prefix" {
+  description = "Prefix for the S3 bucket name that stores Well-Architected compliance reports"
+  type        = string
+  default     = "well-architected-compliance-reports"
+}
+
+variable "reports_retention_days" {
+  description = "Number of days to retain non-current versions of reports in the S3 bucket"
+  type        = number
+  default     = 90
 }

@@ -3,6 +3,7 @@
 # TL;DR
 This Terraform module deploys AWS Config Conformance Packs mapped to pillars in the Well-Architected Framework.
 A Lambda function can populate the Notes field in the Well-Architected Tool with AWS Config resource compliance check results.
+Another Lambda function can generate HTML reports of compliance data and store them in an S3 bucket.
 
 ![Sequence flow](./gfx/flow.jpg)
 
@@ -44,7 +45,10 @@ If you can relate to some of these situations, this tool may be useful for you:
 Conformance pack Well-Architected-IAM is also available, as a subset of Security, for insight into that specific area. Do note that no automation is supported for the IAM pack, as it is covered in the Security pack.
 
 ## Well-Architected Tool Integration
-This module can also automatically update your Well-Architected Tool workload with compliance data from the AWS Config Conformance Packs.
+This module provides two Lambda functions for integrating with the Well-Architected Tool:
+
+### 1. Well-Architected Tool Updater
+This Lambda function updates your Well-Architected Tool workload with compliance data from the AWS Config Conformance Packs.
 
 The Lambda function will:
 1. Process each conformance pack (Security, Reliability, Cost Optimization).
@@ -55,16 +59,29 @@ The Lambda function will:
 
 The source code for the Lambda function is located in the [src/wa_tool_updater](src/wa_tool_updater) directory.
 
+### 2. Well-Architected Report Generator
+This Lambda function generates HTML reports from AWS Config compliance data and stores them in a dedicated S3 bucket.
+
+The Lambda function will:
+1. Process each conformance pack (Security, Reliability, Cost Optimization).
+2. Retrieve question titles from the Well-Architected Tool API for more descriptive reports.
+3. Collect compliance data for all rules (SEC01, SEC02, REL01, COST01, etc.).
+4. Generate an HTML report with compliance scores, resource details, and visual progress bars.
+5. Upload the report to a dedicated S3 bucket in the "Reports" folder.
+
+The source code for the Lambda function is located in the [src/wa_report_generator](src/wa_report_generator) directory.
+
 ### Notice about compliance checks and automation
 Check data is based on all resources in the current AWS account. Tagging based filtering is currently not supported. Be aware if you have multiple workloads in the same AWS account.
 
 
 # Getting started
 1. At least two days before your planned review, deploy the module as suggested in [examples/main.tf](examples/main.tf). Compliance checks will update on a daily basis, to reduce unncessary costs for AWS Config Evaluations.
-1. Right before the review, trigger the Lambda function well_architected_tool_updater to update the Well-Architected Tool workload notes sections based on AWS Config Conformance packs compliance status.
-1. Run the review, look to the data in the notes field for discussion. No checked/answered questions will be modified, that would be up to subjective evaluation.
+1. Right before the review, trigger the Lambda functions manually through the AWS Console or CLI:
 
-### Event JSON for Lambda function well_architected_tool_updater in dry_run mode
+## Invoking the Lambda Functions
+
+### Well-Architected Tool Updater
 Extract the Well-Architected Tool Workload ID from Properties - ARN.
 This example with dry_run set to 1 will find relevant compliance data and log to CloudWatch Logs. No changes or updates will be performed.
 ```json
@@ -82,8 +99,8 @@ Flipping dry_run to 0 will perform updates of the notes field. No checked/answer
   "clean_notes": 0
 }
 ```
-### Event JSON for Lambda function well_architected_tool_updater to clean the notes field for all questions
-If you end up with a lot of mess and would like a fresh start, setting clean_notes to 1 will clean the notes field for all questions and return. No further changes to checked/answered questions or compliance data updates will be performed.
+
+To clean the notes field for all questions, set clean_notes to 1:
 ```json
 {
   "workload_id": "141970ea95fd5b4329cea05202659f39",
@@ -91,6 +108,18 @@ If you end up with a lot of mess and would like a fresh start, setting clean_not
   "clean_notes": 1
 }
 ```
+
+### Well-Architected Report Generator
+To generate an HTML report with compliance data, invoke the Lambda function with:
+```json
+{
+  "workload_id": "141970ea95fd5b4329cea05202659f39",
+  "dry_run": 0
+}
+```
+The `workload_id` parameter is used to retrieve question titles from the Well-Architected Tool API, making the report more descriptive.
+
+Setting `dry_run` to 1 will simulate the report generation without uploading to S3.
 
 ## Functionality
 
@@ -159,7 +188,9 @@ You can choose between Daily or Continuous by setting the desired value for the 
 | <a name="module_lambda_function_wa_conformance_cost_03_aws_budgets"></a> [lambda\_function\_wa\_conformance\_cost\_03\_aws\_budgets](#module\_lambda\_function\_wa\_conformance\_cost\_03\_aws\_budgets) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
 | <a name="module_lambda_function_wa_conformance_cost_03_aws_cost_anomaly_detection"></a> [lambda\_function\_wa\_conformance\_cost\_03\_aws\_cost\_anomaly\_detection](#module\_lambda\_function\_wa\_conformance\_cost\_03\_aws\_cost\_anomaly\_detection) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
 | <a name="module_lambda_function_wa_conformance_cost_04_ec2_instances_without_auto_scaling"></a> [lambda\_function\_wa\_conformance\_cost\_04\_ec2\_instances\_without\_auto\_scaling](#module\_lambda\_function\_wa\_conformance\_cost\_04\_ec2\_instances\_without\_auto\_scaling) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
+| <a name="module_lambda_function_wa_report_generator"></a> [lambda\_function\_wa\_report\_generator](#module\_lambda\_function\_wa\_report\_generator) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
 | <a name="module_lambda_function_wa_tool_updater"></a> [lambda\_function\_wa\_tool\_updater](#module\_lambda\_function\_wa\_tool\_updater) | git::https://github.com/terraform-aws-modules/terraform-aws-lambda.git | f7866811bc1429ce224bf6a35448cb44aa5155e7 |
+| <a name="module_wa_reports_s3_bucket"></a> [wa\_reports\_s3\_bucket](#module\_wa\_reports\_s3\_bucket) | git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket.git | 8a0b697adfbc673e6135c70246cff7f8052ad95a |
 
 ## Resources
 
@@ -178,11 +209,14 @@ You can choose between Daily or Continuous by setting the desired value for the 
 | [aws_config_conformance_pack.well_architected_conformance_pack_reliability](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/config_conformance_pack) | resource |
 | [aws_config_conformance_pack.well_architected_conformance_pack_security](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/config_conformance_pack) | resource |
 | [aws_config_delivery_channel.well_architected](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/config_delivery_channel) | resource |
-| [aws_config_retention_configuration.example](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/config_retention_configuration) | resource |
+| [aws_config_retention_configuration.well_architected](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/config_retention_configuration) | resource |
 | [aws_iam_role.config_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role_policy.config_policy_well_architected_recorder](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy_attachment.config_role_attachment](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_kms_key.aws_config_well_architected_recorder_s3_bucket](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key) | resource |
+| [aws_kms_alias.config_well_architected_recorder_kms_alias](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_alias) | resource |
+| [aws_kms_alias.wa_reports_kms_alias](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_alias) | resource |
+| [aws_kms_key.aws_config_well_architected_recorder_kms_key](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key) | resource |
+| [aws_kms_key.wa_reports_kms_key](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key) | resource |
 | [aws_lambda_permission.config_permissions](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_permission) | resource |
 | [aws_s3_object.cloudformation_wa_config_cost_optimization_template](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_object) | resource |
 | [aws_s3_object.cloudformation_wa_config_iam_template](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_object) | resource |
@@ -204,6 +238,7 @@ You can choose between Daily or Continuous by setting the desired value for the 
 |------|-------------|------|---------|:--------:|
 | <a name="input_aws_config_retention_period_in_days"></a> [aws\_config\_retention\_period\_in\_days](#input\_aws\_config\_retention\_period\_in\_days) | Number of days AWS Config stores your historical information. | `number` | `180` | no |
 | <a name="input_cost_optimization_conformance_pack_name"></a> [cost\_optimization\_conformance\_pack\_name](#input\_cost\_optimization\_conformance\_pack\_name) | Name of the Cost Optimization conformance pack | `string` | `"Well-Architected-Cost-Optimization"` | no |
+| <a name="input_deploy_aws_config_recorder"></a> [deploy\_aws\_config\_recorder](#input\_deploy\_aws\_config\_recorder) | Set to true to deploy an AWS Config Recorder. If you already have a customer managed AWS Config recorder in the desired region, set to false. AWS supports only one customer managed configuration recorder for each account for each AWS Region. | `bool` | `true` | no |
 | <a name="input_deploy_cost_optimization_conformance_pack"></a> [deploy\_cost\_optimization\_conformance\_pack](#input\_deploy\_cost\_optimization\_conformance\_pack) | Deploy AWS Config Conformance Pack for Cost Optimization. | `bool` | `true` | no |
 | <a name="input_deploy_iam_conformance_pack"></a> [deploy\_iam\_conformance\_pack](#input\_deploy\_iam\_conformance\_pack) | Deploy AWS Config Conformance Pack for IAM. | `bool` | `false` | no |
 | <a name="input_deploy_reliability_conformance_pack"></a> [deploy\_reliability\_conformance\_pack](#input\_deploy\_reliability\_conformance\_pack) | Deploy AWS Config Conformance Pack for Reliability. | `bool` | `true` | no |
@@ -211,10 +246,12 @@ You can choose between Daily or Continuous by setting the desired value for the 
 | <a name="input_lambda_cloudwatch_logs_retention_in_days"></a> [lambda\_cloudwatch\_logs\_retention\_in\_days](#input\_lambda\_cloudwatch\_logs\_retention\_in\_days) | AWS Config Custom Lambda CloudWatch Logs retention in days. | `number` | `90` | no |
 | <a name="input_lambda_log_level"></a> [lambda\_log\_level](#input\_lambda\_log\_level) | Lambda log level. Valid values [DEBUG,INFO,WARNING,ERROR]. | `string` | `"INFO"` | no |
 | <a name="input_lambda_python_runtime"></a> [lambda\_python\_runtime](#input\_lambda\_python\_runtime) | Runtime for AWS Config Custom Lambda. | `string` | `"python3.12"` | no |
-| <a name="input_lambda_timeout"></a> [lambda\_timeout](#input\_lambda\_timeout) | Timeout for AWS Config Custom Lambda in seconds. | `number` | `30` | no |
+| <a name="input_lambda_timeout"></a> [lambda\_timeout](#input\_lambda\_timeout) | Timeout for AWS Config Custom Lambda in seconds. | `number` | `300` | no |
 | <a name="input_lambda_timezone"></a> [lambda\_timezone](#input\_lambda\_timezone) | Timezone for Lambda functions. Uses pytz timezone names. Default is Europe/Paris (Central European Time). | `string` | `"Europe/Paris"` | no |
 | <a name="input_recording_frequency"></a> [recording\_frequency](#input\_recording\_frequency) | AWS Config Recording Frequency. Valid options: DAILY or CONTINUOUS. | `string` | `"DAILY"` | no |
 | <a name="input_reliability_conformance_pack_name"></a> [reliability\_conformance\_pack\_name](#input\_reliability\_conformance\_pack\_name) | Name of the Reliability conformance pack | `string` | `"Well-Architected-Reliability"` | no |
+| <a name="input_reports_bucket_name_prefix"></a> [reports\_bucket\_name\_prefix](#input\_reports\_bucket\_name\_prefix) | Prefix for the S3 bucket name that stores Well-Architected compliance reports | `string` | `"well-architected-compliance-reports"` | no |
+| <a name="input_reports_retention_days"></a> [reports\_retention\_days](#input\_reports\_retention\_days) | Number of days to retain non-current versions of reports in the S3 bucket | `number` | `90` | no |
 | <a name="input_scheduled_config_custom_lambda_periodic_trigger_interval"></a> [scheduled\_config\_custom\_lambda\_periodic\_trigger\_interval](#input\_scheduled\_config\_custom\_lambda\_periodic\_trigger\_interval) | AWS Config Custom Lambda Periodic Trigger Interval. Default value of Twelve\_Hours ensures updates within the DAILY window. Valid Values: One\_Hour \| Three\_Hours \| Six\_Hours \| Twelve\_Hours \| TwentyFour\_Hours | `string` | `"Twelve_Hours"` | no |
 | <a name="input_security_conformance_pack_name"></a> [security\_conformance\_pack\_name](#input\_security\_conformance\_pack\_name) | Name of the Security conformance pack | `string` | `"Well-Architected-Security"` | no |
 
@@ -226,6 +263,10 @@ You can choose between Daily or Continuous by setting the desired value for the 
 | <a name="output_well_architected_conformance_pack_iam_arn"></a> [well\_architected\_conformance\_pack\_iam\_arn](#output\_well\_architected\_conformance\_pack\_iam\_arn) | n/a |
 | <a name="output_well_architected_conformance_pack_reliability_arn"></a> [well\_architected\_conformance\_pack\_reliability\_arn](#output\_well\_architected\_conformance\_pack\_reliability\_arn) | n/a |
 | <a name="output_well_architected_conformance_pack_security_arn"></a> [well\_architected\_conformance\_pack\_security\_arn](#output\_well\_architected\_conformance\_pack\_security\_arn) | n/a |
+| <a name="output_well_architected_report_generator_lambda_function_arn"></a> [well\_architected\_report\_generator\_lambda\_function\_arn](#output\_well\_architected\_report\_generator\_lambda\_function\_arn) | ARN of the Well-Architected Report Generator Lambda function |
+| <a name="output_well_architected_report_generator_lambda_function_name"></a> [well\_architected\_report\_generator\_lambda\_function\_name](#output\_well\_architected\_report\_generator\_lambda\_function\_name) | Name of the Well-Architected Report Generator Lambda function |
+| <a name="output_well_architected_reports_s3_bucket_arn"></a> [well\_architected\_reports\_s3\_bucket\_arn](#output\_well\_architected\_reports\_s3\_bucket\_arn) | ARN of the S3 bucket for Well-Architected compliance reports |
+| <a name="output_well_architected_reports_s3_bucket_name"></a> [well\_architected\_reports\_s3\_bucket\_name](#output\_well\_architected\_reports\_s3\_bucket\_name) | Name of the S3 bucket for Well-Architected compliance reports |
 <!-- END_TF_DOCS -->
 
 **Note**: The inputs and outputs sections are automatically generated by terraform-docs in a git pre-commit hook. This requires setup of [pre-commit-terraform](https://github.com/antonbabenko/pre-commit-terraform) . Follow the install instructions to use, including the dependencies setup. pre-commit ensures correct formatting, linting and generation of documentation. It also check's for trailing whitespace, merge conflics and mixed line endings. See [.pre-commit-config.yaml](./.pre-commit-config.yaml) for more information. A full guide to the pre-commit framework can be found [here](https://pre-commit.com/).

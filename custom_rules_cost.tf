@@ -6,7 +6,7 @@ module "lambda_function_wa_conformance_cost_02_account_structure_implemented" {
   description                       = "AWS Config Custom Rule which checks for the AWS account being a member account in AWS Organizations with consolidated billing enabled."
   handler                           = "index.lambda_handler"
   runtime                           = var.lambda_python_runtime
-  source_path                       = "../../local-modules/wa-config-conformance/src/cost02_account_structure_implemented/index.py"
+  source_path                       = "${path.module}/src/cost02_account_structure_implemented/index.py"
   attach_policy_statements          = true
   timeout                           = var.lambda_timeout
   cloudwatch_logs_retention_in_days = var.lambda_cloudwatch_logs_retention_in_days
@@ -36,7 +36,7 @@ module "lambda_function_wa_conformance_cost_03_aws_budgets" {
   description                       = "AWS Config Custom Rule which checks for AWS Budgets setup according to WAF COST03-BP05."
   handler                           = "index.lambda_handler"
   runtime                           = var.lambda_python_runtime
-  source_path                       = "../../local-modules/wa-config-conformance/src/cost03_aws_budgets/index.py"
+  source_path                       = "${path.module}/src/cost03_aws_budgets/index.py"
   attach_policy_statements          = true
   timeout                           = var.lambda_timeout
   cloudwatch_logs_retention_in_days = var.lambda_cloudwatch_logs_retention_in_days
@@ -66,7 +66,7 @@ module "lambda_function_wa_conformance_cost_03_aws_cost_anomaly_detection" {
   description                       = "AWS Config Custom Rule which checks for AWS Cost Anomaly Detection setup according to WAF COST03-BP05."
   handler                           = "index.lambda_handler"
   runtime                           = var.lambda_python_runtime
-  source_path                       = "../../local-modules/wa-config-conformance/src/cost03_aws_cost_anomaly_detection/index.py"
+  source_path                       = "${path.module}/src/cost03_aws_cost_anomaly_detection/index.py"
   attach_policy_statements          = true
   timeout                           = var.lambda_timeout
   cloudwatch_logs_retention_in_days = var.lambda_cloudwatch_logs_retention_in_days
@@ -94,7 +94,7 @@ module "lambda_function_wa_conformance_cost_03_add_organization_information_to_c
   description                       = "AWS Config Custom Rule which checks if the AWS account is a member of AWS Organizations and at least one Tagging Policy is enabled."
   handler                           = "index.lambda_handler"
   runtime                           = var.lambda_python_runtime
-  source_path                       = "../../local-modules/wa-config-conformance/src/cost03_add_organization_information_to_cost_and_usage/index.py"
+  source_path                       = "${path.module}/src/cost03_add_organization_information_to_cost_and_usage/index.py"
   attach_policy_statements          = true
   timeout                           = var.lambda_timeout
   cloudwatch_logs_retention_in_days = var.lambda_cloudwatch_logs_retention_in_days
@@ -125,7 +125,7 @@ module "lambda_function_wa_conformance_cost_04_ec2_instances_without_auto_scalin
   description                       = "AWS Config Custom Rule which checks for EC2 instances not associated with Auto Scaling Groups."
   handler                           = "index.lambda_handler"
   runtime                           = var.lambda_python_runtime
-  source_path                       = "../../local-modules/wa-config-conformance/src/cost_04_ec2_instances_without_auto_scaling/index.py"
+  source_path                       = "${path.module}/src/cost_04_ec2_instances_without_auto_scaling/index.py"
   attach_policy_statements          = true
   timeout                           = 120
   cloudwatch_logs_retention_in_days = var.lambda_cloudwatch_logs_retention_in_days

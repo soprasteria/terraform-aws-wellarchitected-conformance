@@ -1,11 +1,12 @@
 # AWS Config Delivery Channel to S3
 resource "aws_config_delivery_channel" "well_architected" {
+  count          = var.deploy_aws_config_recorder ? 1 : 0
   name           = "well_architected_config_delivery_channel"
   s3_bucket_name = module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_id
   depends_on     = [aws_config_configuration_recorder.well_architected]
 }
 
-resource "aws_kms_key" "aws_config_well_architected_recorder_s3_bucket" {
+resource "aws_kms_key" "aws_config_well_architected_recorder_kms_key" {
   description             = "KMS key for S3 bucket aws-config-recorder-module-${local.aws_account_id}"
   is_enabled              = true
   enable_key_rotation     = true
@@ -29,6 +30,13 @@ resource "aws_kms_key" "aws_config_well_architected_recorder_s3_bucket" {
 POLICY
 }
 
+# KMS key alias for easier identification
+resource "aws_kms_alias" "config_well_architected_recorder_kms_alias" {
+  name          = "alias/wa-config-recorder-key"
+  target_key_id = aws_kms_key.aws_config_well_architected_recorder_kms_key.key_id
+}
+
+# Provision Amazon S3 bucket regardless of existing or new AWS Config recorder, as this bucket will be used for AWS Config Conformance pack templates as well.
 module "aws_config_well_architected_recorder_s3_bucket" {
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-s3-bucket.git?ref=8a0b697adfbc673e6135c70246cff7f8052ad95a"
   bucket = "aws-config-recorder-module-${local.aws_account_id}"
@@ -43,11 +51,11 @@ module "aws_config_well_architected_recorder_s3_bucket" {
   versioning = {
     enabled = true
   }
-  allowed_kms_key_arn = aws_kms_key.aws_config_well_architected_recorder_s3_bucket.arn
+  allowed_kms_key_arn = aws_kms_key.aws_config_well_architected_recorder_kms_key.arn
   server_side_encryption_configuration = {
     rule = {
       apply_server_side_encryption_by_default = {
-        kms_master_key_id = aws_kms_key.aws_config_well_architected_recorder_s3_bucket.arn
+        kms_master_key_id = aws_kms_key.aws_config_well_architected_recorder_kms_key.arn
         sse_algorithm     = "aws:kms"
       }
     }
@@ -60,8 +68,9 @@ module "aws_config_well_architected_recorder_s3_bucket" {
 
 # AWS Config Configuration Recorder with recording_frequency set by input variable
 resource "aws_config_configuration_recorder" "well_architected" {
+  count    = var.deploy_aws_config_recorder ? 1 : 0
   name     = "well-architected"
-  role_arn = aws_iam_role.config_role.arn
+  role_arn = aws_iam_role.config_role[0].arn
 
   recording_group {
     all_supported                 = true
@@ -74,69 +83,36 @@ resource "aws_config_configuration_recorder" "well_architected" {
 }
 
 # AWS Config retention configuration: Number of days AWS Config stores your historical information.
-resource "aws_config_retention_configuration" "example" {
+resource "aws_config_retention_configuration" "well_architected" {
+  count                    = var.deploy_aws_config_recorder ? 1 : 0
   retention_period_in_days = var.aws_config_retention_period_in_days
 }
 
 # Manages status (recording / stopped) of an AWS Config Configuration Recorder.
 resource "aws_config_configuration_recorder_status" "well_architected" {
-  name       = aws_config_configuration_recorder.well_architected.name
+  count      = var.deploy_aws_config_recorder ? 1 : 0
+  name       = aws_config_configuration_recorder.well_architected[0].name
   is_enabled = true
   depends_on = [aws_config_delivery_channel.well_architected]
 }
 
-data "aws_iam_policy_document" "well_architected_config_assume_role" {
-  statement {
-    effect = "Allow"
-    principals {
-      type        = "Service"
-      identifiers = ["config.amazonaws.com"]
-    }
-    actions = ["sts:AssumeRole"]
-    condition {
-      test     = "StringEquals"
-      variable = "AWS:SourceAccount"
-      values   = [local.aws_account_id]
-    }
-  }
-}
-
-data "aws_iam_policy_document" "config_policy_well_architected_recorder" {
-  statement {
-    effect  = "Allow"
-    actions = ["s3:PutObject", "s3:PutObjectAcl"]
-    resources = [
-      "${module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_arn}/*"
-    ]
-    condition {
-      test     = "StringEquals"
-      variable = "s3:x-amz-acl"
-      values   = ["bucket-owner-full-control"]
-    }
-  }
-  statement {
-    effect  = "Allow"
-    actions = ["s3:GetBucketAcl"]
-    resources = [
-      module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_arn
-    ]
-  }
-}
-
 resource "aws_iam_role_policy" "config_policy_well_architected_recorder" {
-  role   = aws_iam_role.config_role.id
+  count  = var.deploy_aws_config_recorder ? 1 : 0
+  role   = aws_iam_role.config_role[0].id
   name   = "well-architected-config-conformance-packs-policy"
-  policy = data.aws_iam_policy_document.config_policy_well_architected_recorder.json
+  policy = data.aws_iam_policy_document.config_policy_well_architected_recorder[0].json
 }
 
 resource "aws_iam_role_policy_attachment" "config_role_attachment" {
-  role       = aws_iam_role.config_role.name
+  count      = var.deploy_aws_config_recorder ? 1 : 0
+  role       = aws_iam_role.config_role[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWS_ConfigRole"
 }
 
 resource "aws_iam_role" "config_role" {
+  count              = var.deploy_aws_config_recorder ? 1 : 0
   name               = "well-architected-config-conformance-pack-role"
-  assume_role_policy = data.aws_iam_policy_document.well_architected_config_assume_role.json
+  assume_role_policy = data.aws_iam_policy_document.well_architected_config_assume_role[0].json
 }
 
 # Render templates to file on S3 to avoid template_body file limitation of 51,200 bytes
@@ -181,14 +157,12 @@ resource "aws_config_conformance_pack" "well_architected_conformance_pack_securi
   count           = var.deploy_security_conformance_pack ? 1 : 0
   name            = "Well-Architected-Security"
   template_s3_uri = "s3://${module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_id}/${aws_s3_object.cloudformation_wa_config_security_template.key}"
-  depends_on      = [aws_config_configuration_recorder.well_architected]
 }
 
 resource "aws_config_conformance_pack" "well_architected_conformance_pack_reliability" {
   count           = var.deploy_reliability_conformance_pack ? 1 : 0
   name            = "Well-Architected-Reliability"
   template_s3_uri = "s3://${module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_id}/${aws_s3_object.cloudformation_wa_config_reliability_template.key}"
-  depends_on      = [aws_config_configuration_recorder.well_architected]
 
   lifecycle {
     replace_triggered_by = [
@@ -201,7 +175,6 @@ resource "aws_config_conformance_pack" "well_architected_conformance_pack_iam" {
   count           = var.deploy_iam_conformance_pack ? 1 : 0
   name            = "Well-Architected-IAM"
   template_s3_uri = "s3://${module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_id}/${aws_s3_object.cloudformation_wa_config_iam_template.key}"
-  depends_on      = [aws_config_configuration_recorder.well_architected]
 
   lifecycle {
     replace_triggered_by = [
@@ -214,11 +187,4 @@ resource "aws_config_conformance_pack" "well_architected_conformance_pack_cost_o
   count           = var.deploy_cost_optimization_conformance_pack ? 1 : 0
   name            = "Well-Architected-Cost-Optimization"
   template_s3_uri = "s3://${module.aws_config_well_architected_recorder_s3_bucket.s3_bucket_id}/${aws_s3_object.cloudformation_wa_config_cost_optimization_template.key}"
-  depends_on      = [aws_config_configuration_recorder.well_architected]
-
-  #  lifecycle {
-  #    replace_triggered_by = [
-  #      aws_s3_object.cloudformation_wa_config_cost_optimization_template.etag
-  #    ]
-  #  }
 }
