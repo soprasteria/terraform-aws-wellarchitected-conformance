@@ -153,6 +153,10 @@ Back in Well-Architected Tool, the notes field will be updated with detected com
 
 ![SEC4 notes ](./gfx/screenshot-08.png)
 
+You can also invoke the AWS Lambda function well_architected_report_generator by supplying the same JSON payload with the workload id. An extensive report will then be generated and uploaded to Amazon S3. The log out of the invocation will tell you where to find the report, which you can open directly in your browser in the AWS Console.
+
+![Report example - Summary](./gfx/report-screenshot-summary-01.png)
+
 
 ## Cost of AWS Config evaluations
 According to the [AWS Config pricing page](https://aws.amazon.com/config/pricing/); With AWS Config, you are charged based on the number of configuration items recorded, the number of active AWS Config rule evaluations, and the number of conformance pack evaluations in your account. A configuration item is a record of the configuration state of a resource in your AWS account. An AWS Config rule evaluation is a compliance state evaluation of a resource by an AWS Config rule in your AWS account. A conformance pack evaluation is the evaluation of a resource by an AWS Config rule within the conformance pack.
